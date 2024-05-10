@@ -35,8 +35,8 @@ func New(cfg *Config) (*Service, error) {
 		handler: apihandler.NewHandler(true),
 	}
 	// set the api handlers
-	srv.handler.Post("", srv.userTokenHandler)
-	srv.handler.Get("", srv.validateUserTokenHandler)
+	srv.handler.Post("/user", srv.userTokenHandler)
+	srv.handler.Get("/user", srv.validateUserTokenHandler)
 	srv.handler.Post("/app", srv.appTokenHandler)
 	return srv, nil
 }
