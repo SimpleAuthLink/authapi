@@ -9,10 +9,20 @@ import (
 )
 
 const (
+	// APP_SECRET_HEADER is the http header key for the app secret
 	APP_SECRET_HEADER = "APP_SECRET"
-	USER_TOKEN_QUERY  = "token"
+	// USER_TOKEN_QUERY is the url query key for the user token
+	USER_TOKEN_QUERY = "token"
 )
 
+// userTokenHandler method generates a token for the user and sends it via email
+// to the user's email address. The token is generated based on the app id
+// and the user's email address. The token is stored in the database with an
+// expiration time. It gets the app secret from the APP_SECRET_HEADER header
+// and the user's email address from the request body. If it success it sends
+// an "Ok" response. If something goes wrong, it sends an internal server error
+// response. If the app secret is missing or the request body is invalid, it
+// sends a bad request response.
 func (s *Service) userTokenHandler(w http.ResponseWriter, r *http.Request) {
 	// read the app token header
 	appSecret := r.Header.Get(APP_SECRET_HEADER)
@@ -61,6 +71,11 @@ func (s *Service) userTokenHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// validateUserTokenHandler method validates the user token. It gets the token
+// from the USER_TOKEN_QUERY query string and checks if it is valid. If the
+// token is valid, it sends a response with the "Ok" message. If the token is
+// invalid, it sends an unauthorized response. If the token is missing, it
+// sends a bad request response.
 func (s *Service) validateUserTokenHandler(w http.ResponseWriter, r *http.Request) {
 	token := r.URL.Query().Get(USER_TOKEN_QUERY)
 	if token == "" {
@@ -78,16 +93,24 @@ func (s *Service) validateUserTokenHandler(w http.ResponseWriter, r *http.Reques
 	}
 }
 
+// appTokenHandler method generates creates an app in the service, it generates
+// an app id and a secret for the app. It sends the app id and the secret via
+// email to the app's email address. It gets the app name, email, callback, and
+// duration from the request body. If it success it sends an "Ok" response. If
+// something goes wrong, it sends an internal server error response. If the
+// request body is invalid, it sends a bad request response.
 func (s *Service) appTokenHandler(w http.ResponseWriter, r *http.Request) {
 	// read body
 	defer r.Body.Close()
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
+		log.Println("ERR: error reading request body:", err)
 		http.Error(w, "error reading request body", http.StatusInternalServerError)
 		return
 	}
 	app := &AppRequest{}
 	if err := json.Unmarshal(body, app); err != nil {
+		log.Println("ERR: error parsing request body:", err)
 		http.Error(w, "error parsing request body", http.StatusBadRequest)
 		return
 	}
@@ -111,6 +134,7 @@ func (s *Service) appTokenHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// send response
 	if _, err := w.Write([]byte("Ok")); err != nil {
+		log.Println("ERR: error sending response:", err)
 		http.Error(w, "error sending response", http.StatusInternalServerError)
 		return
 	}
