@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"log"
+	"time"
 
 	"github.com/lucasmenendez/authapi"
 )
@@ -27,16 +29,17 @@ func main() {
 		log.Fatal("ERR: email host is required, use -email-host")
 	}
 	// create the service
-	service, err := authapi.New(&authapi.Config{
+	service, err := authapi.New(context.Background(), &authapi.Config{
 		EmailConfig: authapi.EmailConfig{
 			Address:   *emailAddr,
 			Password:  *emailPass,
 			EmailHost: *emailHost,
 			EmailPort: *emailPort,
 		},
-		Server:     *serviceHost,
-		ServerPort: *servicePort,
-		DataPath:   *dataPath,
+		Server:          *serviceHost,
+		ServerPort:      *servicePort,
+		DataPath:        *dataPath,
+		CleanerCooldown: 30 * time.Minute,
 	})
 	if err != nil {
 		log.Fatalln("ERR: error creating service:", err)

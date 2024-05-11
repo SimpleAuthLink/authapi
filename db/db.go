@@ -21,7 +21,6 @@ var (
 	ErrDelToken      = fmt.Errorf("error deleting the token from database")
 )
 
-
 type App struct {
 	Name            string
 	AdminEmail      string
@@ -43,4 +42,5 @@ type DB interface {
 	TokenExpiration(token Token) (time.Time, error)
 	SetToken(token Token, expiration time.Time) error
 	DeleteToken(token Token) error
+	DeleteExpiredTokens() error
 }

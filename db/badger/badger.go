@@ -193,3 +193,33 @@ func (b *BadgerDriver) DeleteToken(token db.Token) error {
 		return nil
 	})
 }
+
+func (b *BadgerDriver) DeleteExpiredTokens() error {
+	if err := b.db.Update(func(txn *badger.Txn) error {
+		it := txn.NewIterator(badger.DefaultIteratorOptions)
+		defer it.Close()
+		prefix := []byte(tokenPrefix)
+		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+			item := it.Item()
+			if err := item.Value(func(val []byte) error {
+				iExpiration, err := strconv.Atoi(string(val))
+				if err != nil {
+					return errors.Join(db.ErrGetToken, err)
+				}
+				expiration := time.Unix(0, int64(iExpiration))
+				if expiration.Before(time.Now()) {
+					if err := txn.Delete(item.Key()); err != nil {
+						return errors.Join(db.ErrDelToken, err)
+					}
+				}
+				return nil
+			}); err != nil {
+				return errors.Join(db.ErrGetToken, err)
+			}
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+	return nil
+}

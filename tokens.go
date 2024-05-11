@@ -79,6 +79,24 @@ func (s *Service) validUserToken(token string) bool {
 	return true
 }
 
+func (s *Service) sanityTokenCleaner() {
+	s.wait.Add(1)
+	go func() {
+		defer s.wait.Done()
+		ticker := time.NewTicker(s.cfg.CleanerCooldown)
+		for {
+			select {
+			case <-s.ctx.Done():
+				return
+			case <-ticker.C:
+				if err := s.db.DeleteExpiredTokens(); err != nil {
+					log.Println("ERR: error deleting expired tokens:", err)
+				}
+			}
+		}
+	}()
+}
+
 func encodeUserToken(appId, email string) (string, error) {
 	// check if the app id and email are not empty
 	if len(appId) == 0 || len(email) == 0 {
