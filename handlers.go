@@ -58,11 +58,12 @@ func (s *Service) userTokenHandler(w http.ResponseWriter, r *http.Request) {
 		Subject: userTokenSubject,
 		Body:    fmt.Sprintf(userTokenBody, magicLink),
 	}
-	if err := email.Send(&s.cfg.EmailConfig); err != nil {
-		log.Println("ERR: error sending email:", err)
-		http.Error(w, "error sending email", http.StatusInternalServerError)
-		return
-	}
+	// send email in the background
+	go func() {
+		if err := email.Send(&s.cfg.EmailConfig); err != nil {
+			log.Println("ERR: error sending email:", err)
+		}
+	}()
 	// send response
 	if _, err := w.Write([]byte("Ok")); err != nil {
 		log.Println("ERR: error sending response:", err)
