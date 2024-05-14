@@ -14,6 +14,7 @@ import (
 	"github.com/lucasmenendez/apihandler"
 	"github.com/simpleauthlink/authapi/db"
 	"github.com/simpleauthlink/authapi/db/mongo"
+	"github.com/simpleauthlink/authapi/email"
 )
 
 // Config struct represents the configuration needed to init the service. It
@@ -21,7 +22,7 @@ import (
 // data path to store the database, and the cleaner cooldown to clean the
 // expired tokens.
 type Config struct {
-	EmailConfig
+	email.EmailConfig
 	Server          string
 	ServerPort      int
 	DatabaseURI     string
@@ -39,6 +40,7 @@ type Service struct {
 	wait       sync.WaitGroup
 	cfg        *Config
 	db         db.DB
+	emailQueue *email.EmailQueue
 	handler    *apihandler.Handler
 	httpServer *http.Server
 }
@@ -59,11 +61,12 @@ func New(ctx context.Context, cfg *Config) (*Service, error) {
 	internalCtx, cancel := context.WithCancel(ctx)
 	// create the service
 	srv := &Service{
-		ctx:     internalCtx,
-		cancel:  cancel,
-		cfg:     cfg,
-		db:      db,
-		handler: apihandler.NewHandler(true),
+		ctx:        internalCtx,
+		cancel:     cancel,
+		cfg:        cfg,
+		db:         db,
+		emailQueue: email.NewEmailQueue(internalCtx, &cfg.EmailConfig),
+		handler:    apihandler.NewHandler(true),
 	}
 	// set the api handlers
 	srv.handler.Post("/user", srv.userTokenHandler)
@@ -79,6 +82,8 @@ func New(ctx context.Context, cfg *Config) (*Service, error) {
 // Start method starts the service. It starts the token cleaner and the api
 // server. If something goes wrong during the process, it returns an error.
 func (s *Service) Start() error {
+	// start the email queue
+	s.emailQueue.Start()
 	// start the token cleaner in the background
 	s.sanityTokenCleaner()
 	// start the api server
@@ -92,13 +97,15 @@ func (s *Service) Start() error {
 // background processes to finish. It closes the database. If something goes
 // wrong during the process, it returns an error.
 func (s *Service) Stop() error {
-	// cancel the context and wait for the background processes finish
-	s.cancel()
-	defer s.wait.Wait()
 	// close the database
 	if err := s.db.Close(); err != nil {
 		return fmt.Errorf("error closing db: %w", err)
 	}
+	// stop the email queue
+	s.emailQueue.Stop()
+	// cancel the context and wait for the background processes finish
+	s.cancel()
+	defer s.wait.Wait()
 	return nil
 }
 

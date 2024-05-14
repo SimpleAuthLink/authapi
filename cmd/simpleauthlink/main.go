@@ -10,6 +10,7 @@ import (
 	"time"
 
 	api "github.com/simpleauthlink/authapi"
+	"github.com/simpleauthlink/authapi/email"
 )
 
 const (
@@ -61,13 +62,14 @@ type config struct {
 }
 
 func main() {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	c, err := parseConfig()
 	if err != nil {
 		log.Fatalln("ERR: error parsing config:", err)
 	}
 	// create the service
 	service, err := api.New(context.Background(), &api.Config{
-		EmailConfig: api.EmailConfig{
+		EmailConfig: email.EmailConfig{
 			Address:   c.emailAddr,
 			Password:  c.emailPass,
 			EmailHost: c.emailHost,
@@ -82,11 +84,6 @@ func main() {
 	if err != nil {
 		log.Fatalln("ERR: error creating service:", err)
 	}
-	defer func() {
-		if err := service.Stop(); err != nil {
-			log.Fatalln("ERR: error stopping service:", err)
-		}
-	}()
 	go func() {
 		if err := service.Start(); err != nil {
 			log.Fatalln("ERR: error running service:", err)

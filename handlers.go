@@ -6,6 +6,8 @@ import (
 	"io"
 	"log"
 	"net/http"
+
+	"github.com/simpleauthlink/authapi/email"
 )
 
 const (
@@ -52,18 +54,12 @@ func (s *Service) userTokenHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "error generating token", http.StatusInternalServerError)
 		return
 	}
-	// compose and send email
-	email := &Email{
+	// compose and push the email to the queue to be sent
+	s.emailQueue.Push(&email.Email{
 		To:      req.Email,
 		Subject: userTokenSubject,
 		Body:    fmt.Sprintf(userTokenBody, magicLink),
-	}
-	// send email in the background
-	go func() {
-		if err := email.Send(&s.cfg.EmailConfig); err != nil {
-			log.Println("ERR: error sending email:", err)
-		}
-	}()
+	})
 	// send response
 	if _, err := w.Write([]byte("Ok")); err != nil {
 		log.Println("ERR: error sending response:", err)
@@ -122,17 +118,12 @@ func (s *Service) appTokenHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "error generating token", http.StatusInternalServerError)
 		return
 	}
-	// send email
-	email := &Email{
+	// compose and push the email to the queue to be sent
+	s.emailQueue.Push(&email.Email{
 		To:      app.Email,
 		Subject: appTokenSubject,
 		Body:    fmt.Sprintf(appTokenBody, app.Name, appId, secret),
-	}
-	if err := email.Send(&s.cfg.EmailConfig); err != nil {
-		log.Println("ERR: error sending email:", err)
-		http.Error(w, "error sending email", http.StatusInternalServerError)
-		return
-	}
+	})
 	// send response
 	if _, err := w.Write([]byte("Ok")); err != nil {
 		log.Println("ERR: error sending response:", err)
