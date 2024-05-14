@@ -3,8 +3,12 @@ package authapi
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/lucasmenendez/apihandler"
@@ -30,12 +34,13 @@ type Config struct {
 // group to wait for the background processes to finish, the configuration,
 // the database connection and the api handler.
 type Service struct {
-	ctx     context.Context
-	cancel  context.CancelFunc
-	wait    sync.WaitGroup
-	cfg     *Config
-	db      db.DB
-	handler *apihandler.Handler
+	ctx        context.Context
+	cancel     context.CancelFunc
+	wait       sync.WaitGroup
+	cfg        *Config
+	db         db.DB
+	handler    *apihandler.Handler
+	httpServer *http.Server
 }
 
 // New function creates a new service based on the provided context and
@@ -64,6 +69,10 @@ func New(ctx context.Context, cfg *Config) (*Service, error) {
 	srv.handler.Post("/user", srv.userTokenHandler)
 	srv.handler.Get("/user", srv.validateUserTokenHandler)
 	srv.handler.Post("/app", srv.appTokenHandler)
+	srv.httpServer = &http.Server{
+		Addr:    fmt.Sprintf("%s:%d", cfg.Server, cfg.ServerPort),
+		Handler: srv.handler,
+	}
 	return srv, nil
 }
 
@@ -73,8 +82,10 @@ func (s *Service) Start() error {
 	// start the token cleaner in the background
 	s.sanityTokenCleaner()
 	// start the api server
-	addr := fmt.Sprintf("%s:%d", s.cfg.Server, s.cfg.ServerPort)
-	return http.ListenAndServe(addr, s.handler)
+	if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		return err
+	}
+	return nil
 }
 
 // Stop method stops the service. It cancels the context and waits for the
@@ -89,4 +100,21 @@ func (s *Service) Stop() error {
 		return fmt.Errorf("error closing db: %w", err)
 	}
 	return nil
+}
+
+// WaitToShutdown method waits for the service to shutdown. It listens for the
+// interrupt signal and shutdown the http server and the service. If something
+// goes wrong during the process, it returns an error.
+func (s *Service) WaitToShutdown() error {
+	done := make(chan os.Signal, 1)
+	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+	<-done
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	defer func() {
+		if err := s.Stop(); err != nil {
+			log.Println(err)
+		}
+	}()
+	return s.httpServer.Shutdown(ctx)
 }

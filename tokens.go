@@ -53,7 +53,7 @@ func (s *Service) magicLink(rawSecret, email string) (string, error) {
 		if err := s.db.DeleteToken(token); err != nil {
 			return "", err
 		}
-	} else {
+	} else if err != db.ErrTokenNotFound {
 		log.Println("ERR: error checking token:", err)
 	}
 	// set token and expiration in the database
@@ -89,15 +89,13 @@ func (s *Service) validUserToken(token string) bool {
 	if err != nil {
 		return false
 	}
-	log.Println("expiration:", expiration)
-	log.Println("now:", time.Now())
 	// check if the token is expired
-	// if time.Now().After(expiration) {
-	// 	if err := s.db.DeleteToken(db.Token(token)); err != nil {
-	// 		log.Println("ERR: error deleting token:", err)
-	// 	}
-	// 	return false
-	// }
+	if time.Now().After(expiration) {
+		if err := s.db.DeleteToken(db.Token(token)); err != nil {
+			log.Println("ERR: error deleting token:", err)
+		}
+		return false
+	}
 	return true
 }
 
