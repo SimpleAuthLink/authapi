@@ -71,7 +71,7 @@ type DB interface {
 	// returns the app and an error if something goes wrong.
 	AppById(appId string) (*App, error)
 	// AppBySecret method gets an app from the database based on the app secret.
-	// It returns the app and an error if something goes wrong.
+	// It returns the app, the app id and an error if something goes wrong.
 	AppBySecret(secret string) (*App, string, error)
 	// SetApp method stores an app in the database. It returns an error if
 	// something goes wrong.
@@ -94,6 +94,9 @@ type DB interface {
 	// DeleteToken method deletes a token from the database. It returns an error
 	// if something goes wrong.
 	DeleteToken(token Token) error
+	// HasToken method checks if a token exists in the database based on the
+	// token prefix. It returns the token and an error if something goes wrong.
+	HasToken(prefix string) (Token, error)
 	// DeleteExpiredTokens method deletes all the expired tokens from the
 	// database. It returns an error if something goes wrong.
 	DeleteExpiredTokens() error

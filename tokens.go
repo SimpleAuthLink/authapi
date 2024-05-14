@@ -7,11 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lucasmenendez/authapi/db"
+	"github.com/simpleauthlink/authapi/db"
 )
 
 const (
-	tokenTemplate  = "%s-%s-%s"
 	tokenSeparator = "-"
 
 	userIdSize = 4
@@ -42,11 +41,21 @@ func (s *Service) magicLink(rawSecret, email string) (string, error) {
 		return "", err
 	}
 	// generate token and calculate expiration
-	token, err := encodeUserToken(appId, email)
+	token, userId, err := encodeUserToken(appId, email)
 	if err != nil {
 		return "", err
 	}
 	expiration := time.Now().Add(time.Duration(app.SessionDuration) * time.Second)
+	// check if there is a token for the user and app in the database and delete
+	// it if it exists
+	tokenPrefix := strings.Join([]string{appId, userId}, tokenSeparator)
+	if token, err := s.db.HasToken(tokenPrefix); err == nil {
+		if err := s.db.DeleteToken(token); err != nil {
+			return "", err
+		}
+	} else {
+		log.Println("ERR: error checking token:", err)
+	}
 	// set token and expiration in the database
 	if err := s.db.SetToken(db.Token(token), expiration); err != nil {
 		return "", err
@@ -80,13 +89,15 @@ func (s *Service) validUserToken(token string) bool {
 	if err != nil {
 		return false
 	}
+	log.Println("expiration:", expiration)
+	log.Println("now:", time.Now())
 	// check if the token is expired
-	if time.Now().After(expiration) {
-		if err := s.db.DeleteToken(db.Token(token)); err != nil {
-			log.Println("ERR: error deleting token:", err)
-		}
-		return false
-	}
+	// if time.Now().After(expiration) {
+	// 	if err := s.db.DeleteToken(db.Token(token)); err != nil {
+	// 		log.Println("ERR: error deleting token:", err)
+	// 	}
+	// 	return false
+	// }
 	return true
 }
 
@@ -115,27 +126,27 @@ func (s *Service) sanityTokenCleaner() {
 
 // encodeUserToken function encodes the user information into a token and
 // returns it. It receives the app id and the email of the user and returns the
-// token. If the app id or the email are empty, it returns an error. The token
-// is composed of three parts separated by a token separator. The first part is
-// a random sequence of 8 bytes encoded as a hexadecimal string. The second part
-// is the app id and the third part is the user id. The user id is generated
-// hashing the email with a length of 4 bytes. The token is returned following
-// the token format:
+// token and the user id. If the app id or the email are empty, it returns an
+// error. The token is composed of three parts separated by a token separator.
+// The first part is a random sequence of 8 bytes encoded as a hexadecimal
+// string. The second part is the app id and the third part is the user id. The
+// user id is generated hashing the email with a length of 4 bytes. The token
+// is returned following the token format:
 //
-//	[randomPart(16)]-[appId(8)]-[userId(8)]
-func encodeUserToken(appId, email string) (string, error) {
+//	[appId(8)]-[userId(8)]-[randomPart(16)]
+func encodeUserToken(appId, email string) (string, string, error) {
 	// check if the app id and email are not empty
 	if len(appId) == 0 || len(email) == 0 {
-		return "", fmt.Errorf("appId and email are required")
+		return "", "", fmt.Errorf("appId and email are required")
 	}
 	bToken := randBytes(8)
 	hexToken := hex.EncodeToString(bToken)
 	// hash email
 	userId, err := hash(email, 4)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	return fmt.Sprintf(tokenTemplate, hexToken, appId, userId), nil
+	return strings.Join([]string{appId, userId, hexToken}, tokenSeparator), userId, nil
 }
 
 // decodeUserToken function decodes the user information from the token provided
@@ -144,11 +155,11 @@ func encodeUserToken(appId, email string) (string, error) {
 // second and third parts, which are the app id and the user id respectively,
 // following the token format:
 //
-//	[randomPart(16)]-[appId(8)]-[userId(8)]
+//	[appId(8)]-[userId(8)]-[randomPart(16)]
 func decodeUserToken(token string) (string, string, error) {
 	tokenParts := strings.Split(token, tokenSeparator)
 	if len(tokenParts) != 3 {
 		return "", "", fmt.Errorf("invalid token")
 	}
-	return tokenParts[1], tokenParts[2], nil
+	return tokenParts[0], tokenParts[1], nil
 }

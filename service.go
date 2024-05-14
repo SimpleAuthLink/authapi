@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/lucasmenendez/apihandler"
-	"github.com/lucasmenendez/authapi/db"
-	"github.com/lucasmenendez/authapi/db/badger"
+	"github.com/simpleauthlink/authapi/db"
+	"github.com/simpleauthlink/authapi/db/mongo"
 )
 
 // Config struct represents the configuration needed to init the service. It
@@ -20,7 +20,8 @@ type Config struct {
 	EmailConfig
 	Server          string
 	ServerPort      int
-	DataPath        string
+	DatabaseURI     string
+	DatabaseName    string
 	CleanerCooldown time.Duration
 }
 
@@ -43,8 +44,11 @@ type Service struct {
 // an error.
 func New(ctx context.Context, cfg *Config) (*Service, error) {
 	// init the database with badger driver
-	db := new(badger.BadgerDriver)
-	if err := db.Init(cfg.DataPath); err != nil {
+	db := new(mongo.MongoDriver)
+	if err := db.Init(mongo.Config{
+		MongoURI: cfg.DatabaseURI,
+		Database: cfg.DatabaseName,
+	}); err != nil {
 		return nil, fmt.Errorf("error initializing db: %w", err)
 	}
 	internalCtx, cancel := context.WithCancel(ctx)

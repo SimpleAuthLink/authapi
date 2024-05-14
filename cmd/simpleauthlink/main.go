@@ -9,28 +9,31 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/lucasmenendez/authapi"
+	api "github.com/simpleauthlink/authapi"
 )
 
 const (
-	defaultHost      = "0.0.0.0"
-	defaultPort      = 8080
-	defaultDataPath  = "./.temp"
-	defaultEmailAddr = ""
-	defaultEmailPass = ""
-	defaultEmailHost = ""
-	defaultEmailPort = 587
+	defaultHost         = "0.0.0.0"
+	defaultPort         = 8080
+	defaultDatabaseURI  = "mongodb://localhost:27017"
+	defaultDatabaseName = "simpleauth"
+	defaultEmailAddr    = ""
+	defaultEmailPass    = ""
+	defaultEmailHost    = ""
+	defaultEmailPort    = 587
 
 	hostFlag          = "host"
 	portFlag          = "port"
-	dataPathFlag      = "data-path"
+	dbURIFlag         = "db-uri"
+	dbNameFlag        = "db-name"
 	emailAddrFlag     = "email-addr"
 	emailPassFlag     = "email-pass"
 	emailHostFlag     = "email-host"
 	emailPortFlag     = "email-port"
 	hostFlagDesc      = "service host"
 	portFlagDesc      = "service port"
-	dataPathFlagDesc  = "data path"
+	dbURIFlagDesc     = "database uri"
+	dbNameFlagDesc    = "database name"
 	emailAddrFlagDesc = "email account address"
 	emailPassFlagDesc = "email account password"
 	emailHostFlagDesc = "email server host"
@@ -38,7 +41,8 @@ const (
 
 	hostEnv      = "SIMPLEAUTH_HOST"
 	portEnv      = "SIMPLEAUTH_PORT"
-	dataPathEnv  = "SIMPLEAUTH_DATA_PATH"
+	dbURIEnv     = "SIMPLEAUTH_DB_URI"
+	dbNameEnv    = "SIMPLEAUTH_DB_NAME"
 	emailAddrEnv = "SIMPLEAUTH_EMAIL_ADDR"
 	emailPassEnv = "SIMPLEAUTH_EMAIL_PASS"
 	emailHostEnv = "SIMPLEAUTH_EMAIL_HOST"
@@ -48,7 +52,8 @@ const (
 type config struct {
 	host      string
 	port      int
-	dataPath  string
+	dbURI     string
+	dbName    string
 	emailAddr string
 	emailPass string
 	emailHost string
@@ -61,8 +66,8 @@ func main() {
 		log.Fatalln("ERR: error parsing config:", err)
 	}
 	// create the service
-	service, err := authapi.New(context.Background(), &authapi.Config{
-		EmailConfig: authapi.EmailConfig{
+	service, err := api.New(context.Background(), &api.Config{
+		EmailConfig: api.EmailConfig{
 			Address:   c.emailAddr,
 			Password:  c.emailPass,
 			EmailHost: c.emailHost,
@@ -70,7 +75,8 @@ func main() {
 		},
 		Server:          c.host,
 		ServerPort:      c.port,
-		DataPath:        c.dataPath,
+		DatabaseURI:     c.dbURI,
+		DatabaseName:    c.dbName,
 		CleanerCooldown: 30 * time.Minute,
 	})
 	if err != nil {
@@ -87,12 +93,13 @@ func main() {
 }
 
 func parseConfig() (*config, error) {
-	var fhost, fdataPath, femailAddr, femailPass, femailHost string
+	var fhost, fdbURI, fdbName, femailAddr, femailPass, femailHost string
 	var fport, femailPort int
 	// get config from flags
 	flag.StringVar(&fhost, hostFlag, defaultHost, hostFlagDesc)
 	flag.IntVar(&fport, portFlag, defaultPort, hostFlagDesc)
-	flag.StringVar(&fdataPath, dataPathFlag, defaultDataPath, dataPathFlagDesc)
+	flag.StringVar(&fdbURI, dbURIFlag, defaultDatabaseURI, dbURIFlagDesc)
+	flag.StringVar(&fdbName, dbNameFlag, defaultDatabaseName, dbNameFlagDesc)
 	flag.StringVar(&femailAddr, emailAddrFlag, defaultEmailAddr, emailAddrFlagDesc)
 	flag.StringVar(&femailPass, emailPassFlag, defaultEmailPass, emailPassFlagDesc)
 	flag.StringVar(&femailHost, emailHostFlag, defaultEmailHost, emailHostFlagDesc)
@@ -101,7 +108,8 @@ func parseConfig() (*config, error) {
 	// get config from env
 	envHost := os.Getenv(hostEnv)
 	envPort := os.Getenv(portEnv)
-	envDataPath := os.Getenv(dataPathEnv)
+	envDBURI := os.Getenv(dbURIEnv)
+	envDBName := os.Getenv(dbNameEnv)
 	envEmailAddr := os.Getenv(emailAddrEnv)
 	envEmailPass := os.Getenv(emailPassEnv)
 	envEmailHost := os.Getenv(emailHostEnv)
@@ -121,36 +129,40 @@ func parseConfig() (*config, error) {
 	c := &config{
 		host:      fhost,
 		port:      fport,
-		dataPath:  fdataPath,
+		dbURI:     fdbURI,
+		dbName:    fdbName,
 		emailAddr: femailAddr,
 		emailPass: femailPass,
 		emailHost: femailHost,
 		emailPort: femailPort,
 	}
 	// if some flags are not set, set them by env
-	if c.host == "" {
+	if envHost != "" {
 		c.host = envHost
 	}
-	if c.port == 0 {
+	if envPort != "" {
 		if nenvPort, err := strconv.Atoi(envPort); err == nil {
 			c.port = nenvPort
 		} else {
 			return nil, fmt.Errorf("invalid port value: %s", envPort)
 		}
 	}
-	if c.dataPath == "" {
-		c.dataPath = envDataPath
+	if envDBURI != "" {
+		c.dbURI = envDBURI
 	}
-	if c.emailAddr == "" {
+	if envDBName != "" {
+		c.dbName = envDBName
+	}
+	if envEmailAddr != "" {
 		c.emailAddr = envEmailAddr
 	}
-	if c.emailPass == "" {
+	if envEmailPass != "" {
 		c.emailPass = envEmailPass
 	}
-	if c.emailHost == "" {
+	if envEmailHost != "" {
 		c.emailHost = envEmailHost
 	}
-	if c.emailPort == 0 {
+	if envEmailPort != "" {
 		if nenvEmailPort, err := strconv.Atoi(envEmailPort); err == nil {
 			c.emailPort = nenvEmailPort
 		} else {

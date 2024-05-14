@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/lucasmenendez/authapi/db"
+	"github.com/simpleauthlink/authapi/db"
 )
 
 // minDuration constant is the minimum duration allowed for a token to be valid,
