@@ -52,6 +52,56 @@ func (s *Service) authApp(name, email, callback string, duration int64) (string,
 	return appId, secret, nil
 }
 
+// updateAppMetadata method updates the app metadata based on the app id, name,
+// callback, and duration. If the app id is empty, it returns an error. If the
+// duration is non zero an less than the minimum duration, it returns an error.
+// If something fails during the process, it returns an error.
+func (s *Service) updateAppMetadata(appId, name, callback string, duration int64) error {
+	// check if the app id is not empty
+	if len(appId) == 0 {
+		return fmt.Errorf("app id is required")
+	}
+	// check if the duration is valid
+	if duration != 0 && duration < minDuration {
+		return fmt.Errorf("duration must be at least %d seconds", minDuration)
+	}
+	// get app from the database
+	app, err := s.db.AppById(appId)
+	if err != nil {
+		return err
+	}
+	// update app metadata
+	if name != "" {
+		app.Name = name
+	}
+	if callback != "" {
+		app.Callback = callback
+	}
+	if duration != 0 {
+		app.SessionDuration = duration
+	}
+	// store app in the database
+	return s.db.SetApp(appId, app)
+}
+
+// removeApp method removes an app based on the app id. If the app id is empty,
+// it returns an error. If something fails during the process, it returns an
+// error. It also removes all the tokens for the app from the database using
+// the app id as the prefix to find them.
+func (s *Service) removeApp(appId string) error {
+	// check if the app id is not empty
+	if len(appId) == 0 {
+		return fmt.Errorf("app id is required")
+	}
+	// remove all the tokens for the app from the database, using the app id as
+	// the prefix
+	if err := s.db.DeleteTokensByPrefix(appId); err != nil {
+		return err
+	}
+	// remove app from the database
+	return s.db.DeleteApp(appId)
+}
+
 // generateApp function generates an app based on the email. It returns the app
 // id, the app secret and the hashed secret. If the email is empty or something
 // fails during the process, it returns an error. The app id is generated

@@ -72,6 +72,8 @@ func New(ctx context.Context, cfg *Config) (*Service, error) {
 	srv.handler.Post("/user", srv.userTokenHandler)
 	srv.handler.Get("/user", srv.validateUserTokenHandler)
 	srv.handler.Post("/app", srv.appTokenHandler)
+	srv.handler.Put("/app", srv.updateAppHandler)
+	srv.handler.Delete("/app", srv.delAppHandler)
 	srv.httpServer = &http.Server{
 		Addr:    fmt.Sprintf("%s:%d", cfg.Server, cfg.ServerPort),
 		Handler: srv.handler,

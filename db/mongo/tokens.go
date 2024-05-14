@@ -61,18 +61,17 @@ func (md *MongoDriver) DeleteToken(token db.Token) error {
 	return nil
 }
 
-func (md *MongoDriver) HasToken(tokenPrefix string) (db.Token, error) {
+func (md *MongoDriver) DeleteTokensByPrefix(tokenPrefix string) error {
 	// check if there is a token with the provided prefix in the database
 	ctx, cancel := context.WithTimeout(md.ctx, 5*time.Second)
 	defer cancel()
-	var dbToken Token
-	if err := md.tokens.FindOne(ctx, bson.M{"_id": bson.M{"$regex": "^" + tokenPrefix}}).Decode(&dbToken); err != nil {
+	if _, err := md.tokens.DeleteMany(ctx, bson.M{"_id": bson.M{"$regex": "^" + tokenPrefix}}); err != nil {
 		if err == mongo.ErrNoDocuments {
-			return db.Token(""), db.ErrTokenNotFound
+			return db.ErrTokenNotFound
 		}
-		return db.Token(""), errors.Join(db.ErrGetToken, err)
+		return errors.Join(db.ErrGetToken, err)
 	}
-	return dbToken.Token, nil
+	return nil
 }
 
 func (md *MongoDriver) DeleteExpiredTokens() error {

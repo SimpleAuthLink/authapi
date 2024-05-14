@@ -49,12 +49,10 @@ func (s *Service) magicLink(rawSecret, email string) (string, error) {
 	// check if there is a token for the user and app in the database and delete
 	// it if it exists
 	tokenPrefix := strings.Join([]string{appId, userId}, tokenSeparator)
-	if token, err := s.db.HasToken(tokenPrefix); err == nil {
-		if err := s.db.DeleteToken(token); err != nil {
-			return "", err
+	if err := s.db.DeleteTokensByPrefix(tokenPrefix); err != nil {
+		if err != db.ErrTokenNotFound {
+			log.Println("ERR: error checking token:", err)
 		}
-	} else if err != db.ErrTokenNotFound {
-		log.Println("ERR: error checking token:", err)
 	}
 	// set token and expiration in the database
 	if err := s.db.SetToken(db.Token(token), expiration); err != nil {
@@ -97,6 +95,43 @@ func (s *Service) validUserToken(token string) bool {
 		return false
 	}
 	return true
+}
+
+// validAdminToken function checks if the provided token is a valid admin token.
+// It checks if the token is not empty, if the app id is in the database, if the
+// token is not expired and if the token is in the database. If the token is
+// invalid, it returns false. It also returns the app id if the token is valid.
+func (s *Service) validAdminToken(token string) (string, bool) {
+	// check if the token is not empty
+	if len(token) == 0 {
+		return "", false
+	}
+	// get the app id from the token
+	appId, userId, err := decodeUserToken(token)
+	if err != nil {
+		return "", false
+	}
+	// the admin has the same id as the app (the hased email)
+	if userId != appId {
+		return "", false
+	}
+	// check if the app in the database
+	if _, err := s.db.AppById(appId); err != nil {
+		return "", false
+	}
+	// get the token expiration from the database
+	expiration, err := s.db.TokenExpiration(db.Token(token))
+	if err != nil {
+		return "", false
+	}
+	// check if the token is expired
+	if time.Now().After(expiration) {
+		if err := s.db.DeleteToken(db.Token(token)); err != nil {
+			log.Println("ERR: error deleting token:", err)
+		}
+		return "", false
+	}
+	return appId, true
 }
 
 // sanityTokenCleaner function starts a goroutine that cleans the expired tokens

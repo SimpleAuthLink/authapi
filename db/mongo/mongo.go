@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"sync"
 	"time"
 
@@ -92,6 +93,9 @@ func (md *MongoDriver) Close() error {
 	return nil
 }
 
+// createIndexes creates the indexes for the collections. It creates an index
+// for the app secrets and an index for the token expiration. It returns an
+// error if something goes wrong.
 func (md *MongoDriver) createIndexes() error {
 	ctx, cancel := context.WithTimeout(md.ctx, 20*time.Second)
 	defer cancel()
@@ -110,4 +114,48 @@ func (md *MongoDriver) createIndexes() error {
 		return err
 	}
 	return nil
+}
+
+// dynamicUpdateDocument creates a BSON update document from a struct,
+// including only non-zero fields. It uses reflection to iterate over the
+// struct fields and create the update document. The struct fields must have
+// a bson tag to be included in the update document. The _id field is skipped.
+func dynamicUpdateDocument(item interface{}, alwaysUpdate []string) (bson.M, error) {
+	// check if the input is a pointer to a struct
+	val := reflect.ValueOf(item)
+	if val.Kind() == reflect.Ptr {
+		val = val.Elem()
+	}
+	// check if the input is a struct
+	if !val.IsValid() || val.Kind() != reflect.Struct {
+		return nil, fmt.Errorf("input must be a valid struct")
+	}
+	update := bson.M{}
+	typ := val.Type()
+	// create a map for quick lookup of always update fields
+	alwaysUpdateMap := make(map[string]bool, len(alwaysUpdate))
+	for _, tag := range alwaysUpdate {
+		alwaysUpdateMap[tag] = true
+	}
+	// iterate over the struct fields
+	for i := 0; i < val.NumField(); i++ {
+		// check if the field can be accessed
+		field := val.Field(i)
+		if !field.CanInterface() {
+			continue
+		}
+		// get the field bson tag and type
+		fieldType := typ.Field(i)
+		tag := fieldType.Tag.Get("bson")
+		// skip the field if the tag is empty, "-" or "_id"
+		if tag == "" || tag == "-" || tag == "_id" {
+			continue
+		}
+		// check if the field should always be updated or is not the zero value
+		_, alwaysUpdate := alwaysUpdateMap[tag]
+		if alwaysUpdate || !reflect.DeepEqual(field.Interface(), reflect.Zero(field.Type()).Interface()) {
+			update[tag] = field.Interface()
+		}
+	}
+	return bson.M{"$set": update}, nil
 }

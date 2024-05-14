@@ -66,15 +66,18 @@ func (md *MongoDriver) SetApp(appId string, app *db.App) error {
 	// create or update app in the database
 	ctx, cancel := context.WithTimeout(md.ctx, 5*time.Second)
 	defer cancel()
-	dbApp := App{
+	dbApp, err := dynamicUpdateDocument(App{
 		ID:              appId,
 		Name:            app.Name,
 		AdminEmail:      app.AdminEmail,
 		SessionDuration: app.SessionDuration,
 		Callback:        app.Callback,
+	}, nil)
+	if err != nil {
+		return errors.Join(db.ErrSetApp, err)
 	}
-	opts := options.Replace().SetUpsert(true)
-	if _, err := md.apps.ReplaceOne(ctx, bson.M{"_id": appId}, dbApp, opts); err != nil {
+	opts := options.Update().SetUpsert(true)
+	if _, err := md.apps.UpdateOne(ctx, bson.M{"_id": appId}, dbApp, opts); err != nil {
 		return errors.Join(db.ErrSetApp, err)
 	}
 	return nil

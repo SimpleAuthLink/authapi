@@ -94,9 +94,9 @@ type DB interface {
 	// DeleteToken method deletes a token from the database. It returns an error
 	// if something goes wrong.
 	DeleteToken(token Token) error
-	// HasToken method checks if a token exists in the database based on the
-	// token prefix. It returns the token and an error if something goes wrong.
-	HasToken(prefix string) (Token, error)
+	// DeleteTokenByPrefix method deletes all the tokens with the provided
+	// prefix from the database. It returns an error if something goes wrong.
+	DeleteTokensByPrefix(prefix string) error
 	// DeleteExpiredTokens method deletes all the expired tokens from the
 	// database. It returns an error if something goes wrong.
 	DeleteExpiredTokens() error

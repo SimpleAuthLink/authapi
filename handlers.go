@@ -131,3 +131,81 @@ func (s *Service) appTokenHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+// updateAppHandler method updates an app in the service. It gets the app id
+// from the URL path and the app name, callback, and duration from the request
+// body. If the app id is missing, it sends a bad request response. If the app
+// is not found, it sends a not found response. If it success it sends an Ok
+// response. If something goes wrong, it sends an internal server error
+// response.
+func (s *Service) updateAppHandler(w http.ResponseWriter, r *http.Request) {
+	token := r.URL.Query().Get(USER_TOKEN_QUERY)
+	if token == "" {
+		http.Error(w, "missing token", http.StatusBadRequest)
+		return
+	}
+	appId, valid := s.validAdminToken(token)
+	if !valid {
+		http.Error(w, "invalid token", http.StatusUnauthorized)
+		return
+	}
+	// read body
+	defer r.Body.Close()
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Println("ERR: error reading request body:", err)
+		http.Error(w, "error reading request body", http.StatusInternalServerError)
+		return
+	}
+	// decode the app from the request
+	app := &AppRequest{}
+	if err := json.Unmarshal(body, app); err != nil {
+		log.Println("ERR: error parsing request body:", err)
+		http.Error(w, "error parsing request body", http.StatusBadRequest)
+		return
+	}
+	// update the app in the database
+	if err := s.updateAppMetadata(appId, app.Name, app.Callback, app.Duration); err != nil {
+		log.Println("ERR: error updating app:", err)
+		http.Error(w, "error updating app", http.StatusInternalServerError)
+		return
+	}
+	// send response
+	if _, err := w.Write([]byte("Ok")); err != nil {
+		log.Println("ERR: error sending response:", err)
+		http.Error(w, "error sending response", http.StatusInternalServerError)
+		return
+	}
+}
+
+// delAppHandler method deletes an app from the service. It gets the app id from
+// the token provided in the URL query. If the token is missing, it sends a bad
+// request response. If the token is invalid or is not an admin token, it sends
+// an unauthorized response. If it success it sends an Ok response. If something
+// goes wrong, it sends an internal server error response.
+func (s *Service) delAppHandler(w http.ResponseWriter, r *http.Request) {
+	// get the token from the query
+	token := r.URL.Query().Get(USER_TOKEN_QUERY)
+	if token == "" {
+		http.Error(w, "missing token", http.StatusBadRequest)
+		return
+	}
+	// validate the token and get the app id
+	appId, valid := s.validAdminToken(token)
+	if !valid {
+		http.Error(w, "invalid token", http.StatusUnauthorized)
+		return
+	}
+	// remove the app from the service
+	if err := s.removeApp(appId); err != nil {
+		log.Println("ERR: error deleting app:", err)
+		http.Error(w, "error deleting app", http.StatusInternalServerError)
+		return
+	}
+	// send response
+	if _, err := w.Write([]byte("Ok")); err != nil {
+		log.Println("ERR: error sending response:", err)
+		http.Error(w, "error sending response", http.StatusInternalServerError)
+		return
+	}
+}
