@@ -87,9 +87,13 @@ func main() {
 			log.Fatalln("ERR: error stopping service:", err)
 		}
 	}()
-	if err := service.Start(); err != nil {
-		log.Fatalln("ERR: error running service:", err)
-	}
+	go func() {
+		if err := service.Start(); err != nil {
+			log.Fatalln("ERR: error running service:", err)
+		}
+	}()
+	// wait for the service to finish
+	service.WaitToShutdown()
 }
 
 func parseConfig() (*config, error) {

@@ -28,6 +28,9 @@ type Email struct {
 // the subject and the body of the email.
 const plainTemplate = "Subject: %s\r\n\r\n%s\r\n"
 
+// retries is the number of retries to send the email.
+const retries = 3
+
 // Send method sends the email using the provided configuration. It uses the
 // email address as the sender address and the username for the SMTP server.
 // It composes the email message, creates the auth object with the email
@@ -43,7 +46,13 @@ func (e *Email) Send(conf *EmailConfig) error {
 	server := fmt.Sprintf("%s:%d", conf.EmailHost, conf.EmailPort)
 	receipts := []string{e.To}
 	// send the email
-	if err := smtp.SendMail(server, auth, conf.Address, receipts, msg); err != nil {
+	var err error
+	for i := 0; i < retries; i++ {
+		if err = smtp.SendMail(server, auth, conf.Address, receipts, msg); err == nil {
+			break
+		}
+	}
+	if err != nil {
 		return fmt.Errorf("error sending email: %w", err)
 	}
 	return nil
