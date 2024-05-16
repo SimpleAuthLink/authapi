@@ -10,6 +10,7 @@ import (
 	"time"
 
 	api "github.com/simpleauthlink/authapi"
+	"github.com/simpleauthlink/authapi/db/mongo"
 	"github.com/simpleauthlink/authapi/email"
 )
 
@@ -67,8 +68,16 @@ func main() {
 	if err != nil {
 		log.Fatalln("ERR: error parsing config:", err)
 	}
+	// init the database with mongo driver
+	db := new(mongo.MongoDriver)
+	if err := db.Init(mongo.Config{
+		MongoURI: c.dbURI,
+		Database: c.dbName,
+	}); err != nil {
+		log.Fatalln("error initializing db: %w", err)
+	}
 	// create the service
-	service, err := api.New(context.Background(), &api.Config{
+	service, err := api.New(context.Background(), db, &api.Config{
 		EmailConfig: email.EmailConfig{
 			Address:   c.emailAddr,
 			Password:  c.emailPass,
@@ -77,8 +86,6 @@ func main() {
 		},
 		Server:          c.host,
 		ServerPort:      c.port,
-		DatabaseURI:     c.dbURI,
-		DatabaseName:    c.dbName,
 		CleanerCooldown: 30 * time.Minute,
 	})
 	if err != nil {

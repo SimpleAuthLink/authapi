@@ -13,7 +13,6 @@ import (
 
 	"github.com/lucasmenendez/apihandler"
 	"github.com/simpleauthlink/authapi/db"
-	"github.com/simpleauthlink/authapi/db/mongo"
 	"github.com/simpleauthlink/authapi/email"
 )
 
@@ -25,8 +24,6 @@ type Config struct {
 	email.EmailConfig
 	Server          string
 	ServerPort      int
-	DatabaseURI     string
-	DatabaseName    string
 	CleanerCooldown time.Duration
 }
 
@@ -49,15 +46,7 @@ type Service struct {
 // configuration. It initializes the database, creates the service and sets
 // the api handlers. If something goes wrong during the process, it returns
 // an error.
-func New(ctx context.Context, cfg *Config) (*Service, error) {
-	// init the database with badger driver
-	db := new(mongo.MongoDriver)
-	if err := db.Init(mongo.Config{
-		MongoURI: cfg.DatabaseURI,
-		Database: cfg.DatabaseName,
-	}); err != nil {
-		return nil, fmt.Errorf("error initializing db: %w", err)
-	}
+func New(ctx context.Context, db db.DB, cfg *Config) (*Service, error) {
 	internalCtx, cancel := context.WithCancel(ctx)
 	// create the service
 	srv := &Service{

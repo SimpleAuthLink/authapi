@@ -61,11 +61,15 @@ func (md *MongoDriver) DeleteToken(token db.Token) error {
 	return nil
 }
 
-func (md *MongoDriver) DeleteTokensByPrefix(tokenPrefix string) error {
+func (md *MongoDriver) DeleteTokensByPrefix(prefix string) error {
+	// check if the prefix is empty and return nil if it is
+	if prefix == "" {
+		return nil
+	}
 	// check if there is a token with the provided prefix in the database
 	ctx, cancel := context.WithTimeout(md.ctx, 5*time.Second)
 	defer cancel()
-	if _, err := md.tokens.DeleteMany(ctx, bson.M{"_id": bson.M{"$regex": "^" + tokenPrefix}}); err != nil {
+	if _, err := md.tokens.DeleteMany(ctx, bson.M{"_id": bson.M{"$regex": "^" + prefix}}); err != nil {
 		if err == mongo.ErrNoDocuments {
 			return db.ErrTokenNotFound
 		}
