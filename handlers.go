@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/simpleauthlink/authapi/db"
 	"github.com/simpleauthlink/authapi/email"
 )
 
@@ -48,18 +49,35 @@ func (s *Service) userTokenHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// generate token
-	magicLink, err := s.magicLink(appSecret, req.Email)
+	magicLink, token, err := s.magicLink(appSecret, req.Email)
 	if err != nil {
 		log.Println("ERR: error generating token:", err)
 		http.Error(w, "error generating token", http.StatusInternalServerError)
 		return
 	}
-	// compose and push the email to the queue to be sent
-	s.emailQueue.Push(&email.Email{
+	// compose and push the email to the queue to be sent, if it fails, delete
+	// the token from the database, log the error and send an error response
+	if err := s.emailQueue.Push(&email.Email{
 		To:      req.Email,
 		Subject: userTokenSubject,
 		Body:    fmt.Sprintf(userTokenBody, magicLink),
-	})
+	}); err != nil {
+		defer func() {
+			if err := s.db.DeleteToken(db.Token(token)); err != nil {
+				log.Println("ERR: error deleting token:", err)
+			}
+		}()
+		log.Println("ERR: error sending email:", err)
+		if err == email.ErrDisallowedDomain {
+			http.Error(w, "disallowed domain", http.StatusBadRequest)
+			return
+		} else if err == email.ErrInvalidEmail {
+			http.Error(w, "invalid email", http.StatusBadRequest)
+			return
+		}
+		http.Error(w, "error sending email", http.StatusInternalServerError)
+		return
+	}
 	// send response
 	if _, err := w.Write([]byte("Ok")); err != nil {
 		log.Println("ERR: error sending response:", err)
@@ -126,12 +144,29 @@ func (s *Service) appTokenHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "error generating token", http.StatusInternalServerError)
 		return
 	}
-	// compose and push the email to the queue to be sent
-	s.emailQueue.Push(&email.Email{
+	// compose and push the email to the queue to be sent if it fails, delete
+	// the app from the database, log the error and send an error response
+	if err := s.emailQueue.Push(&email.Email{
 		To:      app.Email,
 		Subject: appTokenSubject,
 		Body:    fmt.Sprintf(appTokenBody, app.Name, appId, secret),
-	})
+	}); err != nil {
+		log.Println("ERR: error sending email:", err)
+		defer func() {
+			if err := s.removeApp(appId); err != nil {
+				log.Println("ERR: error deleting app:", err)
+			}
+		}()
+		if err == email.ErrDisallowedDomain {
+			http.Error(w, "disallowed domain", http.StatusBadRequest)
+			return
+		} else if err == email.ErrInvalidEmail {
+			http.Error(w, "invalid email", http.StatusBadRequest)
+			return
+		}
+		http.Error(w, "error sending email", http.StatusInternalServerError)
+		return
+	}
 	// send response
 	if _, err := w.Write([]byte("Ok")); err != nil {
 		log.Println("ERR: error sending response:", err)

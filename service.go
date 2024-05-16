@@ -42,19 +42,27 @@ type Service struct {
 	httpServer *http.Server
 }
 
-// New function creates a new service based on the provided context and
-// configuration. It initializes the database, creates the service and sets
-// the api handlers. If something goes wrong during the process, it returns
-// an error.
+// New function creates a new service based on the provided context, the db
+// interface and configuration. It initializes the email queue, creates the
+// service and sets the api handlers. If something goes wrong during the
+// process, it returns an error.
 func New(ctx context.Context, db db.DB, cfg *Config) (*Service, error) {
 	internalCtx, cancel := context.WithCancel(ctx)
+	emailQueue, err := email.NewEmailQueue(internalCtx, &cfg.EmailConfig)
+	if err != nil {
+		if emailQueue == nil {
+			cancel()
+			return nil, err
+		}
+		log.Println("WRN: something occurs during email queue creation:", err)
+	}
 	// create the service
 	srv := &Service{
 		ctx:        internalCtx,
 		cancel:     cancel,
 		cfg:        cfg,
 		db:         db,
-		emailQueue: email.NewEmailQueue(internalCtx, &cfg.EmailConfig),
+		emailQueue: emailQueue,
 		handler:    apihandler.NewHandler(true),
 	}
 	// set the api handlers

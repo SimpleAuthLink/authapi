@@ -15,14 +15,15 @@ import (
 )
 
 const (
-	defaultHost         = "0.0.0.0"
-	defaultPort         = 8080
-	defaultDatabaseURI  = "mongodb://localhost:27017"
-	defaultDatabaseName = "simpleauth"
-	defaultEmailAddr    = ""
-	defaultEmailPass    = ""
-	defaultEmailHost    = ""
-	defaultEmailPort    = 587
+	defaultHost             = "0.0.0.0"
+	defaultPort             = 8080
+	defaultDatabaseURI      = "mongodb://localhost:27017"
+	defaultDatabaseName     = "simpleauth"
+	defaultEmailAddr        = ""
+	defaultEmailPass        = ""
+	defaultEmailHost        = ""
+	defaultEmailPort        = 587
+	defaultDisposableSrcURL = "https://raw.githubusercontent.com/disposable-email-domains/disposable-email-domains/master/disposable_email_blocklist.conf"
 
 	hostFlag          = "host"
 	portFlag          = "port"
@@ -32,6 +33,7 @@ const (
 	emailPassFlag     = "email-pass"
 	emailHostFlag     = "email-host"
 	emailPortFlag     = "email-port"
+	disposableSrcFlag = "disposable-src"
 	hostFlagDesc      = "service host"
 	portFlagDesc      = "service port"
 	dbURIFlagDesc     = "database uri"
@@ -40,26 +42,29 @@ const (
 	emailPassFlagDesc = "email account password"
 	emailHostFlagDesc = "email server host"
 	emailPortFlagDesc = "email server port"
+	disposableSrcDesc = "source url of list of disposable emails domains"
 
-	hostEnv      = "SIMPLEAUTH_HOST"
-	portEnv      = "SIMPLEAUTH_PORT"
-	dbURIEnv     = "SIMPLEAUTH_DB_URI"
-	dbNameEnv    = "SIMPLEAUTH_DB_NAME"
-	emailAddrEnv = "SIMPLEAUTH_EMAIL_ADDR"
-	emailPassEnv = "SIMPLEAUTH_EMAIL_PASS"
-	emailHostEnv = "SIMPLEAUTH_EMAIL_HOST"
-	emailPortEnv = "SIMPLEAUTH_EMAIL_PORT"
+	hostEnv          = "SIMPLEAUTH_HOST"
+	portEnv          = "SIMPLEAUTH_PORT"
+	dbURIEnv         = "SIMPLEAUTH_DB_URI"
+	dbNameEnv        = "SIMPLEAUTH_DB_NAME"
+	emailAddrEnv     = "SIMPLEAUTH_EMAIL_ADDR"
+	emailPassEnv     = "SIMPLEAUTH_EMAIL_PASS"
+	emailHostEnv     = "SIMPLEAUTH_EMAIL_HOST"
+	emailPortEnv     = "SIMPLEAUTH_EMAIL_PORT"
+	disposableSrcEnv = "SIMPLEAUTH_DISPOSABLE_SRC"
 )
 
 type config struct {
-	host      string
-	port      int
-	dbURI     string
-	dbName    string
-	emailAddr string
-	emailPass string
-	emailHost string
-	emailPort int
+	host          string
+	port          int
+	dbURI         string
+	dbName        string
+	emailAddr     string
+	emailPass     string
+	emailHost     string
+	emailPort     int
+	disposableSrc string
 }
 
 func main() {
@@ -79,10 +84,11 @@ func main() {
 	// create the service
 	service, err := api.New(context.Background(), db, &api.Config{
 		EmailConfig: email.EmailConfig{
-			Address:   c.emailAddr,
-			Password:  c.emailPass,
-			EmailHost: c.emailHost,
-			EmailPort: c.emailPort,
+			Address:       c.emailAddr,
+			Password:      c.emailPass,
+			EmailHost:     c.emailHost,
+			EmailPort:     c.emailPort,
+			DisposableSrc: c.disposableSrc,
 		},
 		Server:          c.host,
 		ServerPort:      c.port,
@@ -101,7 +107,7 @@ func main() {
 }
 
 func parseConfig() (*config, error) {
-	var fhost, fdbURI, fdbName, femailAddr, femailPass, femailHost string
+	var fhost, fdbURI, fdbName, femailAddr, femailPass, femailHost, fdisposableSrc string
 	var fport, femailPort int
 	// get config from flags
 	flag.StringVar(&fhost, hostFlag, defaultHost, hostFlagDesc)
@@ -112,6 +118,7 @@ func parseConfig() (*config, error) {
 	flag.StringVar(&femailPass, emailPassFlag, defaultEmailPass, emailPassFlagDesc)
 	flag.StringVar(&femailHost, emailHostFlag, defaultEmailHost, emailHostFlagDesc)
 	flag.IntVar(&femailPort, emailPortFlag, defaultEmailPort, emailPortFlagDesc)
+	flag.StringVar(&fdisposableSrc, disposableSrcFlag, defaultDisposableSrcURL, disposableSrcDesc)
 	flag.Parse()
 	// get config from env
 	envHost := os.Getenv(hostEnv)
@@ -122,6 +129,7 @@ func parseConfig() (*config, error) {
 	envEmailPass := os.Getenv(emailPassEnv)
 	envEmailHost := os.Getenv(emailHostEnv)
 	envEmailPort := os.Getenv(emailPortEnv)
+	envDisposableSrc := os.Getenv(disposableSrcEnv)
 
 	// check if the required flags are set
 	if femailAddr == "" && envEmailAddr == "" {
@@ -135,14 +143,15 @@ func parseConfig() (*config, error) {
 	}
 	// set flags values by default
 	c := &config{
-		host:      fhost,
-		port:      fport,
-		dbURI:     fdbURI,
-		dbName:    fdbName,
-		emailAddr: femailAddr,
-		emailPass: femailPass,
-		emailHost: femailHost,
-		emailPort: femailPort,
+		host:          fhost,
+		port:          fport,
+		dbURI:         fdbURI,
+		dbName:        fdbName,
+		emailAddr:     femailAddr,
+		emailPass:     femailPass,
+		emailHost:     femailHost,
+		emailPort:     femailPort,
+		disposableSrc: fdisposableSrc,
 	}
 	// if some flags are not set, set them by env
 	if envHost != "" {
@@ -176,6 +185,9 @@ func parseConfig() (*config, error) {
 		} else {
 			return nil, fmt.Errorf("invalid email port value: %s", envEmailPort)
 		}
+	}
+	if envDisposableSrc != "" {
+		c.disposableSrc = envDisposableSrc
 	}
 	return c, nil
 }
