@@ -48,6 +48,11 @@ func (s *Service) userTokenHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "error parsing request body", http.StatusBadRequest)
 		return
 	}
+	// check if the email is allowed
+	if !s.emailQueue.Allowed(req.Email) {
+		http.Error(w, "disallowed domain", http.StatusBadRequest)
+		return
+	}
 	// generate token
 	magicLink, token, err := s.magicLink(appSecret, req.Email)
 	if err != nil {
@@ -62,18 +67,9 @@ func (s *Service) userTokenHandler(w http.ResponseWriter, r *http.Request) {
 		Subject: userTokenSubject,
 		Body:    fmt.Sprintf(userTokenBody, magicLink),
 	}); err != nil {
-		defer func() {
-			if err := s.db.DeleteToken(db.Token(token)); err != nil {
-				log.Println("ERR: error deleting token:", err)
-			}
-		}()
 		log.Println("ERR: error sending email:", err)
-		if err == email.ErrDisallowedDomain {
-			http.Error(w, "disallowed domain", http.StatusBadRequest)
-			return
-		} else if err == email.ErrInvalidEmail {
-			http.Error(w, "invalid email", http.StatusBadRequest)
-			return
+		if err := s.db.DeleteToken(db.Token(token)); err != nil {
+			log.Println("ERR: error deleting token:", err)
 		}
 		http.Error(w, "error sending email", http.StatusInternalServerError)
 		return
@@ -137,6 +133,11 @@ func (s *Service) appTokenHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "error parsing request body", http.StatusBadRequest)
 		return
 	}
+	// check if the email is allowed
+	if !s.emailQueue.Allowed(app.Email) {
+		http.Error(w, "disallowed domain", http.StatusBadRequest)
+		return
+	}
 	// generate token
 	appId, secret, err := s.authApp(app.Name, app.Email, app.RedirectURL, app.Duration)
 	if err != nil {
@@ -152,17 +153,8 @@ func (s *Service) appTokenHandler(w http.ResponseWriter, r *http.Request) {
 		Body:    fmt.Sprintf(appTokenBody, app.Name, appId, secret),
 	}); err != nil {
 		log.Println("ERR: error sending email:", err)
-		defer func() {
-			if err := s.removeApp(appId); err != nil {
-				log.Println("ERR: error deleting app:", err)
-			}
-		}()
-		if err == email.ErrDisallowedDomain {
-			http.Error(w, "disallowed domain", http.StatusBadRequest)
-			return
-		} else if err == email.ErrInvalidEmail {
-			http.Error(w, "invalid email", http.StatusBadRequest)
-			return
+		if err := s.removeApp(appId); err != nil {
+			log.Println("ERR: error deleting app:", err)
 		}
 		http.Error(w, "error sending email", http.StatusInternalServerError)
 		return
