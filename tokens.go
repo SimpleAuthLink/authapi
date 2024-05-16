@@ -60,7 +60,7 @@ func (s *Service) magicLink(rawSecret, email string) (string, error) {
 	}
 	// return the magic link based on the app callback and the generated token
 	// TODO: user net/url package
-	return fmt.Sprintf("%s?token=%s", app.Callback, token), nil
+	return fmt.Sprintf("%s?token=%s", app.RedirectURL, token), nil
 }
 
 // validUserToken function checks if the provided token is valid. It checks if
@@ -68,9 +68,9 @@ func (s *Service) magicLink(rawSecret, email string) (string, error) {
 // expired and if the token is in the database. If the token is invalid, it
 // returns false. If something goes wrong during the process, it logs the error
 // and returns false. If the token is valid, it returns true.
-func (s *Service) validUserToken(token string) bool {
-	// check if the token is not empty
-	if len(token) == 0 {
+func (s *Service) validUserToken(token, rawSecret string) bool {
+	// check if the token and secret are not empty
+	if len(token) == 0 || len(rawSecret) == 0 {
 		return false
 	}
 	// get the app id from the token
@@ -78,8 +78,8 @@ func (s *Service) validUserToken(token string) bool {
 	if err != nil {
 		return false
 	}
-	// check if the app in the database
-	if _, err := s.db.AppById(appId); err != nil {
+	// check if the secret is valid
+	if !s.validSecret(appId, rawSecret) {
 		return false
 	}
 	// get the token expiration from the database
@@ -101,9 +101,9 @@ func (s *Service) validUserToken(token string) bool {
 // It checks if the token is not empty, if the app id is in the database, if the
 // token is not expired and if the token is in the database. If the token is
 // invalid, it returns false. It also returns the app id if the token is valid.
-func (s *Service) validAdminToken(token string) (string, bool) {
-	// check if the token is not empty
-	if len(token) == 0 {
+func (s *Service) validAdminToken(token, rawSecret string) (string, bool) {
+	// check if the token and secret are not empty
+	if len(token) == 0 || len(rawSecret) == 0 {
 		return "", false
 	}
 	// get the app id from the token
@@ -115,8 +115,8 @@ func (s *Service) validAdminToken(token string) (string, bool) {
 	if userId != appId {
 		return "", false
 	}
-	// check if the app in the database
-	if _, err := s.db.AppById(appId); err != nil {
+	// check if the secret is valid
+	if !s.validSecret(appId, rawSecret) {
 		return "", false
 	}
 	// get the token expiration from the database

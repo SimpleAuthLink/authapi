@@ -11,19 +11,19 @@ import (
 // which is an integer with a value of 60 (seconds).
 const minDuration = 60 // seconds
 
-// authApp method creates a new app based on the provided name, email, callback
+// authApp method creates a new app based on the provided name, email, redirectURL
 // and duration. It returns the app id and the app secret. If the name, email or
-// callback are empty, it returns an error. If the duration is less than the
+// redirectURL are empty, it returns an error. If the duration is less than the
 // minimum duration, it returns an error. If something fails during the process,
 // it returns an error. The app id and the app secret are generated based on the
 // email using the generateApp function. The app is stored in the database using
 // the app id as the key. The secret is stored in the database using the hashed
 // secret as the key. The hashed secret is required to be compared with the
 // secret provided by the user in the requests.
-func (s *Service) authApp(name, email, callback string, duration int64) (string, string, error) {
-	// check if the name, email, and callback are not empty
-	if len(name) == 0 || len(email) == 0 || len(callback) == 0 {
-		return "", "", fmt.Errorf("name, email, and callback are required")
+func (s *Service) authApp(name, email, redirectURL string, duration int64) (string, string, error) {
+	// check if the name, email, and redirectURL are not empty
+	if len(name) == 0 || len(email) == 0 || len(redirectURL) == 0 {
+		return "", "", fmt.Errorf("name, email, and redirectURL are required")
 	}
 	// check if the duration is valid
 	if duration < minDuration {
@@ -34,7 +34,7 @@ func (s *Service) authApp(name, email, callback string, duration int64) (string,
 		Name:            name,
 		AdminEmail:      email,
 		SessionDuration: duration,
-		Callback:        callback,
+		RedirectURL:     redirectURL,
 	}
 	// generate app based on email
 	appId, secret, hSecret, err := generateApp(appData.AdminEmail)
@@ -53,10 +53,10 @@ func (s *Service) authApp(name, email, callback string, duration int64) (string,
 }
 
 // updateAppMetadata method updates the app metadata based on the app id, name,
-// callback, and duration. If the app id is empty, it returns an error. If the
-// duration is non zero an less than the minimum duration, it returns an error.
-// If something fails during the process, it returns an error.
-func (s *Service) updateAppMetadata(appId, name, callback string, duration int64) error {
+// redirectURL, and duration. If the app id is empty, it returns an error. If
+// the duration is non zero an less than the minimum duration, it returns an
+// error. If something fails during the process, it returns an error.
+func (s *Service) updateAppMetadata(appId, name, redirectURL string, duration int64) error {
 	// check if the app id is not empty
 	if len(appId) == 0 {
 		return fmt.Errorf("app id is required")
@@ -74,8 +74,8 @@ func (s *Service) updateAppMetadata(appId, name, callback string, duration int64
 	if name != "" {
 		app.Name = name
 	}
-	if callback != "" {
-		app.Callback = callback
+	if redirectURL != "" {
+		app.RedirectURL = redirectURL
 	}
 	if duration != 0 {
 		app.SessionDuration = duration
@@ -102,12 +102,23 @@ func (s *Service) removeApp(appId string) error {
 	return s.db.DeleteApp(appId)
 }
 
+func (s *Service) validSecret(appId, rawSecret string) bool {
+	secret, err := hash(rawSecret, 16)
+	if err != nil {
+		return false
+	}
+	valid, err := s.db.ValidSecret(secret, appId)
+	if err != nil {
+		return false
+	}
+	return valid
+}
+
 // generateApp function generates an app based on the email. It returns the app
 // id, the app secret and the hashed secret. If the email is empty or something
 // fails during the process, it returns an error. The app id is generated
-// hashing the email with a length of 4 bytes. The app secret is a random
-// sequence of 16 bytes encoded as a hexadecimal string. The hashed secret is
-// required to store the secret in the database without exposing it.
+// hashing the email with a length of 4 bytes. The app secret is generated
+// using the appSecret function.
 func generateApp(email string) (string, string, string, error) {
 	if len(email) == 0 {
 		return "", "", "", fmt.Errorf("email is required")
@@ -118,12 +129,25 @@ func generateApp(email string) (string, string, string, error) {
 		return "", "", "", err
 	}
 	// generate secret
+	secret, hSecret, err := appSecret()
+	if err != nil {
+		return "", "", "", err
+	}
+	return appId, secret, hSecret, nil
+}
+
+// appSecret function generates an new app secret. It returns the secret, the
+// hashed secret and an error if something fails during the process. The secret
+// is a random sequence of 16 bytes encoded as a hexadecimal string. The hashed
+// secret is required to store the secret in the database without exposing it.
+func appSecret() (string, string, error) {
+	// generate secret
 	bSecret := randBytes(16)
 	secret := hex.EncodeToString(bSecret)
 	// hash secret
 	hSecret, err := hash(secret, 16)
 	if err != nil {
-		return "", "", "", err
+		return "", "", err
 	}
-	return appId, secret, hSecret, nil
+	return secret, hSecret, nil
 }

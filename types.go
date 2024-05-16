@@ -21,5 +21,5 @@ type AppRequest struct {
 	Name     string `json:"name"`
 	Email    string `json:"admin_email"`
 	Duration int64  `json:"session_duration"`
-	Callback string `json:"callback"`
+	RedirectURL string `json:"redirect_url"`
 }

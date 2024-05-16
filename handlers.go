@@ -74,12 +74,20 @@ func (s *Service) userTokenHandler(w http.ResponseWriter, r *http.Request) {
 // invalid, it sends an unauthorized response. If the token is missing, it
 // sends a bad request response.
 func (s *Service) validateUserTokenHandler(w http.ResponseWriter, r *http.Request) {
+	// read the app token header
+	appSecret := r.Header.Get(APP_SECRET_HEADER)
+	if appSecret == "" {
+		http.Error(w, "missing app token", http.StatusBadRequest)
+		return
+	}
+	// get the token from the query
 	token := r.URL.Query().Get(USER_TOKEN_QUERY)
 	if token == "" {
 		http.Error(w, "missing token", http.StatusBadRequest)
 		return
 	}
-	if !s.validUserToken(token) {
+	// validate the token
+	if !s.validUserToken(token, appSecret) {
 		http.Error(w, "invalid token", http.StatusUnauthorized)
 		return
 	}
@@ -112,7 +120,7 @@ func (s *Service) appTokenHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// generate token
-	appId, secret, err := s.authApp(app.Name, app.Email, app.Callback, app.Duration)
+	appId, secret, err := s.authApp(app.Name, app.Email, app.RedirectURL, app.Duration)
 	if err != nil {
 		log.Println("ERR: error generating token:", err)
 		http.Error(w, "error generating token", http.StatusInternalServerError)
@@ -139,12 +147,20 @@ func (s *Service) appTokenHandler(w http.ResponseWriter, r *http.Request) {
 // response. If something goes wrong, it sends an internal server error
 // response.
 func (s *Service) updateAppHandler(w http.ResponseWriter, r *http.Request) {
+	// read the app token header
+	appSecret := r.Header.Get(APP_SECRET_HEADER)
+	if appSecret == "" {
+		http.Error(w, "missing app token", http.StatusBadRequest)
+		return
+	}
+	// get the token from the query
 	token := r.URL.Query().Get(USER_TOKEN_QUERY)
 	if token == "" {
 		http.Error(w, "missing token", http.StatusBadRequest)
 		return
 	}
-	appId, valid := s.validAdminToken(token)
+	// validate the token and get the app id
+	appId, valid := s.validAdminToken(token, appSecret)
 	if !valid {
 		http.Error(w, "invalid token", http.StatusUnauthorized)
 		return
@@ -165,7 +181,7 @@ func (s *Service) updateAppHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// update the app in the database
-	if err := s.updateAppMetadata(appId, app.Name, app.Callback, app.Duration); err != nil {
+	if err := s.updateAppMetadata(appId, app.Name, app.RedirectURL, app.Duration); err != nil {
 		log.Println("ERR: error updating app:", err)
 		http.Error(w, "error updating app", http.StatusInternalServerError)
 		return
@@ -184,6 +200,12 @@ func (s *Service) updateAppHandler(w http.ResponseWriter, r *http.Request) {
 // an unauthorized response. If it success it sends an Ok response. If something
 // goes wrong, it sends an internal server error response.
 func (s *Service) delAppHandler(w http.ResponseWriter, r *http.Request) {
+	// read the app token header
+	appSecret := r.Header.Get(APP_SECRET_HEADER)
+	if appSecret == "" {
+		http.Error(w, "missing app token", http.StatusBadRequest)
+		return
+	}
 	// get the token from the query
 	token := r.URL.Query().Get(USER_TOKEN_QUERY)
 	if token == "" {
@@ -191,7 +213,7 @@ func (s *Service) delAppHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// validate the token and get the app id
-	appId, valid := s.validAdminToken(token)
+	appId, valid := s.validAdminToken(token, appSecret)
 	if !valid {
 		http.Error(w, "invalid token", http.StatusUnauthorized)
 		return

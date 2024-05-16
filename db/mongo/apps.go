@@ -16,7 +16,7 @@ type App struct {
 	Name            string `bson:"name"`
 	AdminEmail      string `bson:"admin_email"`
 	SessionDuration int64  `bson:"session_duration"`
-	Callback        string `bson:"callback"`
+	RedirectURL     string `bson:"redirect_url"`
 	Secret          string `bson:"secret"`
 }
 
@@ -36,7 +36,7 @@ func (md *MongoDriver) AppById(appId string) (*db.App, error) {
 		Name:            app.Name,
 		AdminEmail:      app.AdminEmail,
 		SessionDuration: app.SessionDuration,
-		Callback:        app.Callback,
+		RedirectURL:     app.RedirectURL,
 	}, nil
 }
 
@@ -56,7 +56,7 @@ func (md *MongoDriver) AppBySecret(secret string) (*db.App, string, error) {
 		Name:            app.Name,
 		AdminEmail:      app.AdminEmail,
 		SessionDuration: app.SessionDuration,
-		Callback:        app.Callback,
+		RedirectURL:     app.RedirectURL,
 	}, app.ID, nil
 }
 
@@ -71,7 +71,7 @@ func (md *MongoDriver) SetApp(appId string, app *db.App) error {
 		Name:            app.Name,
 		AdminEmail:      app.AdminEmail,
 		SessionDuration: app.SessionDuration,
-		Callback:        app.Callback,
+		RedirectURL:     app.RedirectURL,
 	}, nil)
 	if err != nil {
 		return errors.Join(db.ErrSetApp, err)
@@ -96,6 +96,22 @@ func (md *MongoDriver) DeleteApp(appId string) error {
 		return errors.Join(db.ErrDelApp, err)
 	}
 	return nil
+}
+
+func (md *MongoDriver) ValidSecret(secret, appId string) (bool, error) {
+	md.keysLock.Lock()
+	defer md.keysLock.Unlock()
+	// get app from the database based on the app id
+	ctx, cancel := context.WithTimeout(md.ctx, 5*time.Second)
+	defer cancel()
+	var app App
+	if err := md.apps.FindOne(ctx, bson.M{"_id": appId}).Decode(&app); err != nil {
+		if err == mongo.ErrNoDocuments {
+			return false, db.ErrAppNotFound
+		}
+		return false, errors.Join(db.ErrGetApp, err)
+	}
+	return app.Secret == secret, nil
 }
 
 func (md *MongoDriver) SetSecret(secret, appId string) error {

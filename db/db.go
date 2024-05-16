@@ -53,7 +53,7 @@ type App struct {
 	Name            string
 	AdminEmail      string
 	SessionDuration int64
-	Callback        string
+	RedirectURL     string
 }
 
 // Token type represents the token that is stored in the database.
@@ -79,6 +79,9 @@ type DB interface {
 	// DeleteApp method deletes an app from the database. It returns an error if
 	// something goes wrong.
 	DeleteApp(appId string) error
+	// ValidSecret method checks if a secret is valid. It returns true if the
+	// secret is valid and false if it is not.
+	ValidSecret(secret, appId string) (bool, error)
 	// SetSecret method stores a secret in the database. It returns an error if
 	// something goes wrong.
 	SetSecret(secret, appId string) error
