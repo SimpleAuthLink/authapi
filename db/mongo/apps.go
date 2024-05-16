@@ -17,6 +17,7 @@ type App struct {
 	AdminEmail      string `bson:"admin_email"`
 	SessionDuration int64  `bson:"session_duration"`
 	RedirectURL     string `bson:"redirect_url"`
+	UsersQuota      int64  `bson:"users_quota"`
 	Secret          string `bson:"secret"`
 }
 
@@ -37,6 +38,7 @@ func (md *MongoDriver) AppById(appId string) (*db.App, error) {
 		AdminEmail:      app.AdminEmail,
 		SessionDuration: app.SessionDuration,
 		RedirectURL:     app.RedirectURL,
+		UsersQuota:      app.UsersQuota,
 	}, nil
 }
 
@@ -57,6 +59,7 @@ func (md *MongoDriver) AppBySecret(secret string) (*db.App, string, error) {
 		AdminEmail:      app.AdminEmail,
 		SessionDuration: app.SessionDuration,
 		RedirectURL:     app.RedirectURL,
+		UsersQuota:      app.UsersQuota,
 	}, app.ID, nil
 }
 
@@ -72,6 +75,7 @@ func (md *MongoDriver) SetApp(appId string, app *db.App) error {
 		AdminEmail:      app.AdminEmail,
 		SessionDuration: app.SessionDuration,
 		RedirectURL:     app.RedirectURL,
+		UsersQuota:      app.UsersQuota,
 	}, nil)
 	if err != nil {
 		return errors.Join(db.ErrSetApp, err)

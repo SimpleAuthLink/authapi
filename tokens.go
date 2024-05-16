@@ -40,6 +40,15 @@ func (s *Service) magicLink(rawSecret, email string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	// get the number of tokens for the app using the app id as the prefix
+	numberOfAppTokens, err := s.db.CountTokens(appId)
+	if err != nil {
+		return "", err
+	}
+	// check if the number of tokens is greater than the users quota
+	if numberOfAppTokens >= app.UsersQuota {
+		return "", fmt.Errorf("users quota reached")
+	}
 	// generate token and calculate expiration
 	token, userId, err := encodeUserToken(appId, email)
 	if err != nil {

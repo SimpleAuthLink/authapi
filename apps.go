@@ -7,9 +7,14 @@ import (
 	"github.com/simpleauthlink/authapi/db"
 )
 
-// minDuration constant is the minimum duration allowed for a token to be valid,
-// which is an integer with a value of 60 (seconds).
-const minDuration = 60 // seconds
+const (
+	// minDuration constant is the minimum duration allowed for a token to be
+	// valid, which is an integer with a value of 60 (seconds).
+	minDuration = 60 // seconds
+	// defaultUsersQuota constant is the default number of users allowed for an
+	// app, which is an integer with a value of 25.
+	defaultUsersQuota = 25 // users
+)
 
 // authApp method creates a new app based on the provided name, email, redirectURL
 // and duration. It returns the app id and the app secret. If the name, email or
@@ -35,6 +40,7 @@ func (s *Service) authApp(name, email, redirectURL string, duration int64) (stri
 		AdminEmail:      email,
 		SessionDuration: duration,
 		RedirectURL:     redirectURL,
+		UsersQuota:      defaultUsersQuota,
 	}
 	// generate app based on email
 	appId, secret, hSecret, err := generateApp(appData.AdminEmail)

@@ -54,6 +54,7 @@ type App struct {
 	AdminEmail      string
 	SessionDuration int64
 	RedirectURL     string
+	UsersQuota      int64
 }
 
 // Token type represents the token that is stored in the database.
@@ -103,4 +104,8 @@ type DB interface {
 	// DeleteExpiredTokens method deletes all the expired tokens from the
 	// database. It returns an error if something goes wrong.
 	DeleteExpiredTokens() error
+	// CountTokens method counts the number of tokens in the database. It allows
+	// to filter the tokens by the provided prefix. It returns the number of
+	// tokens and an error if something goes wrong.
+	CountTokens(prefix string) (int64, error)
 }
