@@ -1,6 +1,6 @@
 module github.com/simpleauthlink/authapi
 
-go 1.22.2
+go 1.21
 
 require (
 	github.com/lucasmenendez/apihandler v0.0.4
