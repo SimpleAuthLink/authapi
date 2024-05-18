@@ -54,7 +54,7 @@ func (s *Service) userTokenHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// generate token
-	magicLink, token, err := s.magicLink(appSecret, req.Email)
+	magicLink, token, appName, err := s.magicLink(appSecret, req.Email)
 	if err != nil {
 		log.Println("ERR: error generating token:", err)
 		http.Error(w, "error generating token", http.StatusInternalServerError)
@@ -62,10 +62,17 @@ func (s *Service) userTokenHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// compose and push the email to the queue to be sent, if it fails, delete
 	// the token from the database, log the error and send an error response
+	emailData := email.NewUserEmailData(appName, req.Email, magicLink)
+	emailBody, err := email.ParseTemplate(s.cfg.TokenEmailTemplate, emailData)
+	if err != nil {
+		log.Println("ERR: error parsing email template:", err)
+		http.Error(w, "error parsing email template", http.StatusInternalServerError)
+		return
+	}
 	if err := s.emailQueue.Push(&email.Email{
 		To:      req.Email,
-		Subject: userTokenSubject,
-		Body:    fmt.Sprintf(userTokenBody, magicLink),
+		Subject: fmt.Sprintf(userTokenSubject, appName),
+		Body:    emailBody,
 	}); err != nil {
 		log.Println("ERR: error sending email:", err)
 		if err := s.db.DeleteToken(db.Token(token)); err != nil {
@@ -145,12 +152,19 @@ func (s *Service) appTokenHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "error generating token", http.StatusInternalServerError)
 		return
 	}
+	emailData := email.NewAppEmailData(appId, app.Name, app.RedirectURL, secret, app.Email)
+	emailBody, err := email.ParseTemplate(s.cfg.AppEmailTemplate, emailData)
+	if err != nil {
+		log.Println("ERR: error parsing email template:", err)
+		http.Error(w, "error parsing email template", http.StatusInternalServerError)
+		return
+	}
 	// compose and push the email to the queue to be sent if it fails, delete
 	// the app from the database, log the error and send an error response
 	if err := s.emailQueue.Push(&email.Email{
 		To:      app.Email,
-		Subject: appTokenSubject,
-		Body:    fmt.Sprintf(appTokenBody, app.Name, appId, secret),
+		Subject: fmt.Sprintf(appTokenSubject, app.Name),
+		Body:    emailBody,
 	}); err != nil {
 		log.Println("ERR: error sending email:", err)
 		if err := s.removeApp(appId); err != nil {
@@ -161,6 +175,64 @@ func (s *Service) appTokenHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// send response
 	if _, err := w.Write([]byte("Ok")); err != nil {
+		log.Println("ERR: error sending response:", err)
+		http.Error(w, "error sending response", http.StatusInternalServerError)
+		return
+	}
+}
+
+// appHandler method gets the app metadata from the service. It gets the app id
+// from the token provided in the URL query. If the token is missing, it sends
+// a bad request response. If the token is invalid or is not an admin token, it
+// sends an unauthorized response. If the app is not found, it sends a not found
+// response. If it success it sends the app metadata. If something goes wrong,
+// it sends an internal server error response.
+func (s *Service) appHandler(w http.ResponseWriter, r *http.Request) {
+	// read the app token header
+	appSecret := r.Header.Get(APP_SECRET_HEADER)
+	if appSecret == "" {
+		http.Error(w, "missing app token", http.StatusBadRequest)
+		return
+	}
+	// get the token from the query
+	token := r.URL.Query().Get(USER_TOKEN_QUERY)
+	if token == "" {
+		http.Error(w, "missing token", http.StatusBadRequest)
+		return
+	}
+	// validate the token and get the app id
+	appId, valid := s.validAdminToken(token, appSecret)
+	if !valid {
+		http.Error(w, "invalid token", http.StatusUnauthorized)
+		return
+	}
+	// get the app from the database
+	dbApp, err := s.db.AppById(appId)
+	if err != nil {
+		if err == db.ErrAppNotFound {
+			http.Error(w, "app not found", http.StatusNotFound)
+			return
+		}
+		log.Println("ERR: error getting app:", err)
+		http.Error(w, "error getting app", http.StatusInternalServerError)
+		return
+	}
+	// encode the app metadata
+	res, err := json.Marshal(&AppRequest{
+		Name:        dbApp.Name,
+		Email:       dbApp.AdminEmail,
+		Duration:    dbApp.SessionDuration,
+		RedirectURL: dbApp.RedirectURL,
+	})
+	if err != nil {
+		log.Println("ERR: error marshaling app:", err)
+		http.Error(w, "error marshaling app", http.StatusInternalServerError)
+		return
+	}
+	// send response
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if _, err := w.Write(res); err != nil {
 		log.Println("ERR: error sending response:", err)
 		http.Error(w, "error sending response", http.StatusInternalServerError)
 		return

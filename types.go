@@ -1,10 +1,8 @@
 package authapi
 
 const (
-	userTokenSubject = "Your login link is ready!"
-	userTokenBody    = "Login clicking here: %s"
-	appTokenSubject  = "Your app is ready!"
-	appTokenBody     = "Here is the secret for your app '%s' (%s):\n\n\t%s\n\nKeep it safe!"
+	userTokenSubject = "Here is your magic link for '%s' 🔐"
+	appTokenSubject  = "Your app '%s' is ready! 🎉"
 )
 
 // TokenRequest struct includes the required information by the API service to
@@ -18,8 +16,8 @@ type TokenRequest struct {
 // create an app, which are the name, the email of the admin, the session
 // duration and the callback URL.
 type AppRequest struct {
-	Name     string `json:"name"`
-	Email    string `json:"admin_email"`
-	Duration int64  `json:"session_duration"`
+	Name        string `json:"name"`
+	Email       string `json:"admin_email"`
+	Duration    int64  `json:"session_duration"`
 	RedirectURL string `json:"redirect_url"`
 }

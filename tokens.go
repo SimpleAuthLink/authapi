@@ -19,40 +19,41 @@ const (
 	tokenSize  = 8
 )
 
-// magicLink function generates and returns a magic link based on the provided
-// app secret and user email. If the secret or the email are empty, it returns
-// an error. It gets the app id from the database based on the secret. It
-// generates a token and calculates the expiration time based on the app session
-// duration. It stores the token and the expiration time in the database. It
-// returns the magic link composed of the app callback and the generated token.
-func (s *Service) magicLink(rawSecret, email string) (string, string, error) {
+// magicLink function generates and returns a magic link, the generated token
+// and the associated app name, based on the provided app secret and the user
+// email. If the secret or the email are empty, it returns an error. It gets
+// the app id from the database based on the secret. It generates a token and
+// calculates the expiration time based on the app session duration. It stores
+// the token and the expiration time in the database. It returns the magic link
+// composed of the app callback and the generated token.
+func (s *Service) magicLink(rawSecret, email string) (string, string, string, error) {
 	// check if the secret and email are not empty
 	if len(rawSecret) == 0 || len(email) == 0 {
-		return "", "", fmt.Errorf("secret and email are required")
+		return "", "", "", fmt.Errorf("secret and email are required")
 	}
 	// get app secret from raw secret
 	appSecret, err := hash(rawSecret, secretSize)
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 	// get app and app id from the database based on the secret
 	app, appId, err := s.db.AppBySecret(appSecret)
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 	// get the number of tokens for the app using the app id as the prefix
 	numberOfAppTokens, err := s.db.CountTokens(appId)
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 	// check if the number of tokens is greater than the users quota
 	if numberOfAppTokens >= app.UsersQuota {
-		return "", "", fmt.Errorf("users quota reached")
+		return "", "", "", fmt.Errorf("users quota reached")
 	}
 	// generate token and calculate expiration
 	token, userId, err := encodeUserToken(appId, email)
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 	expiration := time.Now().Add(time.Duration(app.SessionDuration) * time.Second)
 	// check if there is a token for the user and app in the database and delete
@@ -65,11 +66,11 @@ func (s *Service) magicLink(rawSecret, email string) (string, string, error) {
 	}
 	// set token and expiration in the database
 	if err := s.db.SetToken(db.Token(token), expiration); err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 	// return the magic link based on the app callback and the generated token
 	// TODO: user net/url package
-	return fmt.Sprintf("%s?token=%s", app.RedirectURL, token), token, nil
+	return fmt.Sprintf("%s?token=%s", app.RedirectURL, token), token, app.Name, nil
 }
 
 // validUserToken function checks if the provided token is valid. It checks if

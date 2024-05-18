@@ -1,0 +1,82 @@
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html charset=UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Magic Link for {{.AppName}} Login</title>
+    <style>
+        @media screen and (max-width: 600px) {
+            .content {
+                width: 100%;
+                display: block;
+            }
+
+            .header,
+            .body,
+            .footer {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+
+<body style="font-family: 'Poppins', Arial, sans-serif">
+    <table width="100%" border="0" cellspacing="0" cellpadding="0">
+        <tr>
+            <td align="center" style="padding: 20px;">
+                <table class="content" width="600" border="0" cellspacing="0" cellpadding="0"
+                    style="border-collapse: collapse; border: 1px solid #cccccc;">
+                    <tr>
+                        <td class="header" style="padding: 40px; text-align: center; color: #1d2734; font-size: 24px;">
+                            <img height="48" style="display: inline-block"
+                                src="https://simpleauth.link/assets/logo.jpg">
+                            <h2 style="display: inline-block">Simple<span style="color: #1c76fd;">Auth</span>.link</h2>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="body" style="padding: 40px; text-align: left; font-size: 16px; line-height: 1.6;">
+                            👋 Hi, {{.EmailHandler}}!
+                            <br /><br />
+                            Your magic link to login to '{{.AppName}}' is ready 🎉.
+                            <br /><br />
+                            Click the button below to login to your account. 👇
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 0px 40px 0px 40px; text-align: center;">
+                            <table cellspacing="0" cellpadding="0" style="margin: auto;">
+                                <tr>
+                                    <td align="center"
+                                        style="background-color: #1c76fd; padding: 10px 20px; border-radius: 5px;">
+                                        <a href="{{.MagicLink}}" target="_blank"
+                                            style="color: #ffffff; text-decoration: none; font-weight: bold;">Login to
+                                            {{.AppName}}</a>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="body" style="padding: 40px; text-align: left; font-size: 16px; line-height: 1.6;">
+                            or copy and paste the following link in your browser:
+                            <br /><br />
+                            <p>{{.MagicLink}}</p>
+                            <br /><br />
+                            If you did not request this, please ignore this email.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="footer"
+                            style="background-color: #333333; padding: 40px; text-align: center; color: white; font-size: 14px;">
+                            {{.AppName}} || Made by <a href="https://simpleauth.link/" target="_blank"
+                                style="color: white">SimpleAuth.link</a>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+
+</html>

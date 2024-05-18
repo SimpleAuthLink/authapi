@@ -65,12 +65,15 @@ func New(ctx context.Context, db db.DB, cfg *Config) (*Service, error) {
 		emailQueue: emailQueue,
 		handler:    apihandler.NewHandler(true),
 	}
-	// set the api handlers
+	// user handlers
 	srv.handler.Post("/user", srv.userTokenHandler)
 	srv.handler.Get("/user", srv.validateUserTokenHandler)
+	// app handlers
+	srv.handler.Get("/app", srv.appHandler)
 	srv.handler.Post("/app", srv.appTokenHandler)
 	srv.handler.Put("/app", srv.updateAppHandler)
 	srv.handler.Delete("/app", srv.delAppHandler)
+	// build the http server
 	srv.httpServer = &http.Server{
 		Addr:    fmt.Sprintf("%s:%d", cfg.Server, cfg.ServerPort),
 		Handler: srv.handler,

@@ -15,56 +15,66 @@ import (
 )
 
 const (
-	defaultHost             = "0.0.0.0"
-	defaultPort             = 8080
-	defaultDatabaseURI      = "mongodb://localhost:27017"
-	defaultDatabaseName     = "simpleauth"
-	defaultEmailAddr        = ""
-	defaultEmailPass        = ""
-	defaultEmailHost        = ""
-	defaultEmailPort        = 587
-	defaultDisposableSrcURL = "https://raw.githubusercontent.com/disposable-email-domains/disposable-email-domains/master/disposable_email_blocklist.conf"
+	defaultHost               = "0.0.0.0"
+	defaultPort               = 8080
+	defaultDatabaseURI        = "mongodb://localhost:27017"
+	defaultDatabaseName       = "simpleauth"
+	defaultEmailAddr          = ""
+	defaultEmailPass          = ""
+	defaultEmailHost          = ""
+	defaultEmailPort          = 587
+	defaultTokenEmailTemplate = "assets/token_email_template.html"
+	defaultAppEmailTemplate   = "assets/app_email_template.html"
+	defaultDisposableSrcURL   = "https://raw.githubusercontent.com/disposable-email-domains/disposable-email-domains/master/disposable_email_blocklist.conf"
 
-	hostFlag          = "host"
-	portFlag          = "port"
-	dbURIFlag         = "db-uri"
-	dbNameFlag        = "db-name"
-	emailAddrFlag     = "email-addr"
-	emailPassFlag     = "email-pass"
-	emailHostFlag     = "email-host"
-	emailPortFlag     = "email-port"
-	disposableSrcFlag = "disposable-src"
-	hostFlagDesc      = "service host"
-	portFlagDesc      = "service port"
-	dbURIFlagDesc     = "database uri"
-	dbNameFlagDesc    = "database name"
-	emailAddrFlagDesc = "email account address"
-	emailPassFlagDesc = "email account password"
-	emailHostFlagDesc = "email server host"
-	emailPortFlagDesc = "email server port"
-	disposableSrcDesc = "source url of list of disposable emails domains"
+	hostFlag               = "host"
+	portFlag               = "port"
+	dbURIFlag              = "db-uri"
+	dbNameFlag             = "db-name"
+	emailAddrFlag          = "email-addr"
+	emailPassFlag          = "email-pass"
+	emailHostFlag          = "email-host"
+	emailPortFlag          = "email-port"
+	tokenEmailTemplateFlag = "email-token-template"
+	appEmailTemplateFlag   = "email-app-template"
+	disposableSrcFlag      = "disposable-src"
+	hostFlagDesc           = "service host"
+	portFlagDesc           = "service port"
+	dbURIFlagDesc          = "database uri"
+	dbNameFlagDesc         = "database name"
+	emailAddrFlagDesc      = "email account address"
+	emailPassFlagDesc      = "email account password"
+	emailHostFlagDesc      = "email server host"
+	emailPortFlagDesc      = "email server port"
+	tokenEmailTemplateDesc = "path to the html template of new token email"
+	appEmailTemplateDesc   = "path to the html template of new app email"
+	disposableSrcDesc      = "source url of list of disposable emails domains"
 
-	hostEnv          = "SIMPLEAUTH_HOST"
-	portEnv          = "SIMPLEAUTH_PORT"
-	dbURIEnv         = "SIMPLEAUTH_DB_URI"
-	dbNameEnv        = "SIMPLEAUTH_DB_NAME"
-	emailAddrEnv     = "SIMPLEAUTH_EMAIL_ADDR"
-	emailPassEnv     = "SIMPLEAUTH_EMAIL_PASS"
-	emailHostEnv     = "SIMPLEAUTH_EMAIL_HOST"
-	emailPortEnv     = "SIMPLEAUTH_EMAIL_PORT"
-	disposableSrcEnv = "SIMPLEAUTH_DISPOSABLE_SRC"
+	hostEnv               = "SIMPLEAUTH_HOST"
+	portEnv               = "SIMPLEAUTH_PORT"
+	dbURIEnv              = "SIMPLEAUTH_DB_URI"
+	dbNameEnv             = "SIMPLEAUTH_DB_NAME"
+	emailAddrEnv          = "SIMPLEAUTH_EMAIL_ADDR"
+	emailPassEnv          = "SIMPLEAUTH_EMAIL_PASS"
+	emailHostEnv          = "SIMPLEAUTH_EMAIL_HOST"
+	emailPortEnv          = "SIMPLEAUTH_EMAIL_PORT"
+	tokenEmailTemplateEnv = "SIMPLEAUTH_TOKEN_EMAIL_TEMPLATE"
+	appEmailTemplateEnv   = "SIMPLEAUTH_APP_EMAIL_TEMPLATE"
+	disposableSrcEnv      = "SIMPLEAUTH_DISPOSABLE_SRC"
 )
 
 type config struct {
-	host          string
-	port          int
-	dbURI         string
-	dbName        string
-	emailAddr     string
-	emailPass     string
-	emailHost     string
-	emailPort     int
-	disposableSrc string
+	host               string
+	port               int
+	dbURI              string
+	dbName             string
+	emailAddr          string
+	emailPass          string
+	emailHost          string
+	emailPort          int
+	tokenEmailTemplate string
+	appEmailTemplate   string
+	disposableSrc      string
 }
 
 func main() {
@@ -84,11 +94,13 @@ func main() {
 	// create the service
 	service, err := api.New(context.Background(), db, &api.Config{
 		EmailConfig: email.EmailConfig{
-			Address:       c.emailAddr,
-			Password:      c.emailPass,
-			EmailHost:     c.emailHost,
-			EmailPort:     c.emailPort,
-			DisposableSrc: c.disposableSrc,
+			Address:            c.emailAddr,
+			Password:           c.emailPass,
+			EmailHost:          c.emailHost,
+			EmailPort:          c.emailPort,
+			DisposableSrc:      c.disposableSrc,
+			TokenEmailTemplate: c.tokenEmailTemplate,
+			AppEmailTemplate:   c.appEmailTemplate,
 		},
 		Server:          c.host,
 		ServerPort:      c.port,
@@ -107,7 +119,7 @@ func main() {
 }
 
 func parseConfig() (*config, error) {
-	var fhost, fdbURI, fdbName, femailAddr, femailPass, femailHost, fdisposableSrc string
+	var fhost, fdbURI, fdbName, femailAddr, femailPass, femailHost, ftokenEmailTemplate, fappEmailTemplate, fdisposableSrc string
 	var fport, femailPort int
 	// get config from flags
 	flag.StringVar(&fhost, hostFlag, defaultHost, hostFlagDesc)
@@ -117,6 +129,8 @@ func parseConfig() (*config, error) {
 	flag.StringVar(&femailAddr, emailAddrFlag, defaultEmailAddr, emailAddrFlagDesc)
 	flag.StringVar(&femailPass, emailPassFlag, defaultEmailPass, emailPassFlagDesc)
 	flag.StringVar(&femailHost, emailHostFlag, defaultEmailHost, emailHostFlagDesc)
+	flag.StringVar(&ftokenEmailTemplate, tokenEmailTemplateFlag, defaultTokenEmailTemplate, tokenEmailTemplateDesc)
+	flag.StringVar(&fappEmailTemplate, appEmailTemplateFlag, defaultAppEmailTemplate, appEmailTemplateDesc)
 	flag.IntVar(&femailPort, emailPortFlag, defaultEmailPort, emailPortFlagDesc)
 	flag.StringVar(&fdisposableSrc, disposableSrcFlag, defaultDisposableSrcURL, disposableSrcDesc)
 	flag.Parse()
@@ -129,6 +143,8 @@ func parseConfig() (*config, error) {
 	envEmailPass := os.Getenv(emailPassEnv)
 	envEmailHost := os.Getenv(emailHostEnv)
 	envEmailPort := os.Getenv(emailPortEnv)
+	envtokenEmailTemplate := os.Getenv(tokenEmailTemplateEnv)
+	envAppEmailTemplate := os.Getenv(appEmailTemplateEnv)
 	envDisposableSrc := os.Getenv(disposableSrcEnv)
 
 	// check if the required flags are set
@@ -143,15 +159,17 @@ func parseConfig() (*config, error) {
 	}
 	// set flags values by default
 	c := &config{
-		host:          fhost,
-		port:          fport,
-		dbURI:         fdbURI,
-		dbName:        fdbName,
-		emailAddr:     femailAddr,
-		emailPass:     femailPass,
-		emailHost:     femailHost,
-		emailPort:     femailPort,
-		disposableSrc: fdisposableSrc,
+		host:               fhost,
+		port:               fport,
+		dbURI:              fdbURI,
+		dbName:             fdbName,
+		emailAddr:          femailAddr,
+		emailPass:          femailPass,
+		emailHost:          femailHost,
+		emailPort:          femailPort,
+		tokenEmailTemplate: ftokenEmailTemplate,
+		appEmailTemplate:   fappEmailTemplate,
+		disposableSrc:      fdisposableSrc,
 	}
 	// if some flags are not set, set them by env
 	if envHost != "" {
@@ -185,6 +203,12 @@ func parseConfig() (*config, error) {
 		} else {
 			return nil, fmt.Errorf("invalid email port value: %s", envEmailPort)
 		}
+	}
+	if envtokenEmailTemplate != "" {
+		c.tokenEmailTemplate = envtokenEmailTemplate
+	}
+	if envAppEmailTemplate != "" {
+		c.appEmailTemplate = envAppEmailTemplate
 	}
 	if envDisposableSrc != "" {
 		c.disposableSrc = envDisposableSrc
