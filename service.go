@@ -63,8 +63,17 @@ func New(ctx context.Context, db db.DB, cfg *Config) (*Service, error) {
 		cfg:        cfg,
 		db:         db,
 		emailQueue: emailQueue,
-		handler:    apihandler.NewHandler(true),
+		handler: apihandler.NewHandler(&apihandler.Config{
+			CORS: true,
+			RateLimitConfig: &apihandler.RateLimitConfig{
+				Rate:  2,
+				Limit: 10,
+			},
+		}),
 	}
+	srv.handler.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
 	// user handlers
 	srv.handler.Post("/user", srv.userTokenHandler)
 	srv.handler.Get("/user", srv.validateUserTokenHandler)
