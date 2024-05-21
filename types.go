@@ -12,12 +12,14 @@ type TokenRequest struct {
 	Email string `json:"email"`
 }
 
-// AppRequest struct includes the required information by the API service to
+// AppData struct includes the required information by the API service to
 // create an app, which are the name, the email of the admin, the session
 // duration and the callback URL.
-type AppRequest struct {
-	Name        string `json:"name"`
-	Email       string `json:"admin_email"`
-	Duration    int64  `json:"session_duration"`
-	RedirectURL string `json:"redirect_url"`
+type AppData struct {
+	Name         string `json:"name"`
+	Email        string `json:"admin_email"`
+	Duration     int64  `json:"session_duration"`
+	RedirectURL  string `json:"redirect_url"`
+	UsersQuota   int64  `json:"users_quota"`
+	CurrentUsers int64  `json:"current_users"`
 }

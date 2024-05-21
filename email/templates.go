@@ -13,6 +13,7 @@ type UserEmailData struct {
 	AppName      string
 	EmailHandler string
 	MagicLink    string
+	Token        string
 }
 
 // AppEmailData struct includes the data required to fill the app email
@@ -26,11 +27,12 @@ type AppEmailData struct {
 }
 
 // NewUserEmailData creates a new UserEmailData with the provided data.
-func NewUserEmailData(appName, email, magicLink string) *UserEmailData {
+func NewUserEmailData(appName, email, magicLink, token string) *UserEmailData {
 	return &UserEmailData{
 		AppName:      appName,
 		EmailHandler: emailHandler(email),
 		MagicLink:    magicLink,
+		Token:        token,
 	}
 }
 

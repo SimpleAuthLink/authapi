@@ -62,7 +62,7 @@ func (s *Service) userTokenHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// compose and push the email to the queue to be sent, if it fails, delete
 	// the token from the database, log the error and send an error response
-	emailData := email.NewUserEmailData(appName, req.Email, magicLink)
+	emailData := email.NewUserEmailData(appName, req.Email, magicLink, token)
 	emailBody, err := email.ParseTemplate(s.cfg.TokenEmailTemplate, emailData)
 	if err != nil {
 		log.Println("ERR: error parsing email template:", err)
@@ -134,7 +134,7 @@ func (s *Service) appTokenHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "error reading request body", http.StatusInternalServerError)
 		return
 	}
-	app := &AppRequest{}
+	app := &AppData{}
 	if err := json.Unmarshal(body, app); err != nil {
 		log.Println("ERR: error parsing request body:", err)
 		http.Error(w, "error parsing request body", http.StatusBadRequest)
@@ -207,7 +207,7 @@ func (s *Service) appHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// get the app from the database
-	dbApp, err := s.db.AppById(appId)
+	app, err := s.appMetadata(appId)
 	if err != nil {
 		if err == db.ErrAppNotFound {
 			http.Error(w, "app not found", http.StatusNotFound)
@@ -218,12 +218,7 @@ func (s *Service) appHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// encode the app metadata
-	res, err := json.Marshal(&AppRequest{
-		Name:        dbApp.Name,
-		Email:       dbApp.AdminEmail,
-		Duration:    dbApp.SessionDuration,
-		RedirectURL: dbApp.RedirectURL,
-	})
+	res, err := json.Marshal(&app)
 	if err != nil {
 		log.Println("ERR: error marshaling app:", err)
 		http.Error(w, "error marshaling app", http.StatusInternalServerError)
@@ -273,7 +268,7 @@ func (s *Service) updateAppHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// decode the app from the request
-	app := &AppRequest{}
+	app := &AppData{}
 	if err := json.Unmarshal(body, app); err != nil {
 		log.Println("ERR: error parsing request body:", err)
 		http.Error(w, "error parsing request body", http.StatusBadRequest)

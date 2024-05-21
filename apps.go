@@ -58,6 +58,29 @@ func (s *Service) authApp(name, email, redirectURL string, duration int64) (stri
 	return appId, secret, nil
 }
 
+// appMetadata method retrieves the app data based on the app id. If the app id is
+// empty, it returns an error. If something fails during the process, it returns
+// an error. The app data includes the name, the email of the admin, the redirect
+// URL, the duration, the users quota, and the current users. The current users
+// are retrieved from the database using the app id to count the number of tokens
+// for the app.
+func (s *Service) appMetadata(appId string) (AppData, error) {
+	dbApp, err := s.db.AppById(appId)
+	if err != nil {
+		return AppData{}, err
+	}
+	app := AppData{
+		Name:        dbApp.Name,
+		Email:       dbApp.AdminEmail,
+		RedirectURL: dbApp.RedirectURL,
+		Duration:    dbApp.SessionDuration,
+		UsersQuota:  dbApp.UsersQuota,
+	}
+	// get the number of current tokens for the app, if it fails, it returns 0
+	app.CurrentUsers, _ = s.db.CountTokens(appId)
+	return app, nil
+}
+
 // updateAppMetadata method updates the app metadata based on the app id, name,
 // redirectURL, and duration. If the app id is empty, it returns an error. If
 // the duration is non zero an less than the minimum duration, it returns an
