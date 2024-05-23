@@ -9,7 +9,9 @@ const (
 // create a token, which is the email of the user. The app secret is also
 // required but it is provided in the request headers.
 type TokenRequest struct {
-	Email string `json:"email"`
+	Email       string `json:"email"`
+	RedirectURL string `json:"redirect_url"`
+	Duration    int64  `json:"session_duration"`
 }
 
 // AppData struct includes the required information by the API service to

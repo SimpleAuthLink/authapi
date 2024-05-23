@@ -26,7 +26,7 @@ const (
 // calculates the expiration time based on the app session duration. It stores
 // the token and the expiration time in the database. It returns the magic link
 // composed of the app callback and the generated token.
-func (s *Service) magicLink(rawSecret, email string) (string, string, string, error) {
+func (s *Service) magicLink(rawSecret, email, redirectURL string, duration int64) (string, string, string, error) {
 	// check if the secret and email are not empty
 	if len(rawSecret) == 0 || len(email) == 0 {
 		return "", "", "", fmt.Errorf("secret and email are required")
@@ -55,7 +55,13 @@ func (s *Service) magicLink(rawSecret, email string) (string, string, string, er
 	if err != nil {
 		return "", "", "", err
 	}
-	expiration := time.Now().Add(time.Duration(app.SessionDuration) * time.Second)
+	// by default, the session duration is the app session duration but it can
+	// be overwritten by the request
+	sessionDuration := app.SessionDuration
+	if duration > 0 {
+		sessionDuration = duration
+	}
+	expiration := time.Now().Add(time.Duration(sessionDuration) * time.Second)
 	// check if there is a token for the user and app in the database and delete
 	// it if it exists
 	tokenPrefix := strings.Join([]string{appId, userId}, tokenSeparator)
@@ -70,7 +76,13 @@ func (s *Service) magicLink(rawSecret, email string) (string, string, string, er
 	}
 	// return the magic link based on the app callback and the generated token
 	// TODO: user net/url package
-	return fmt.Sprintf("%s?token=%s", app.RedirectURL, token), token, app.Name, nil
+	// by default, the redirect URL is the app redirect URL but it can be
+	// overwritten by the request
+	baseURL := app.RedirectURL
+	if redirectURL != "" {
+		baseURL = redirectURL
+	}
+	return fmt.Sprintf("%s?token=%s", baseURL, token), token, app.Name, nil
 }
 
 // validUserToken function checks if the provided token is valid. It checks if

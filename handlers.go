@@ -54,7 +54,7 @@ func (s *Service) userTokenHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// generate token
-	magicLink, token, appName, err := s.magicLink(appSecret, req.Email)
+	magicLink, token, appName, err := s.magicLink(appSecret, req.Email, req.RedirectURL, req.Duration)
 	if err != nil {
 		log.Println("ERR: error generating token:", err)
 		http.Error(w, "error generating token", http.StatusInternalServerError)
