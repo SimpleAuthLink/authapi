@@ -7,28 +7,22 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/simpleauthlink/authapi/client"
 	"github.com/simpleauthlink/authapi/db"
 	"github.com/simpleauthlink/authapi/email"
-)
-
-const (
-	// APP_SECRET_HEADER is the http header key for the app secret
-	APP_SECRET_HEADER = "APP_SECRET"
-	// USER_TOKEN_QUERY is the url query key for the user token
-	USER_TOKEN_QUERY = "token"
 )
 
 // userTokenHandler method generates a token for the user and sends it via email
 // to the user's email address. The token is generated based on the app id
 // and the user's email address. The token is stored in the database with an
-// expiration time. It gets the app secret from the APP_SECRET_HEADER header
-// and the user's email address from the request body. If it success it sends
-// an "Ok" response. If something goes wrong, it sends an internal server error
-// response. If the app secret is missing or the request body is invalid, it
-// sends a bad request response.
+// expiration time. It gets the app secret from the client.AppSecretHeader
+// header and the user's email address from the request body. If it success it
+// sends an "Ok" response. If something goes wrong, it sends an internal server
+// error response. If the app secret is missing or the request body is invalid,
+// it sends a bad request response.
 func (s *Service) userTokenHandler(w http.ResponseWriter, r *http.Request) {
 	// read the app token header
-	appSecret := r.Header.Get(APP_SECRET_HEADER)
+	appSecret := r.Header.Get(client.AppSecretHeader)
 	if appSecret == "" {
 		http.Error(w, "missing app token", http.StatusBadRequest)
 		return
@@ -90,19 +84,19 @@ func (s *Service) userTokenHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // validateUserTokenHandler method validates the user token. It gets the token
-// from the USER_TOKEN_QUERY query string and checks if it is valid. If the
-// token is valid, it sends a response with the "Ok" message. If the token is
-// invalid, it sends an unauthorized response. If the token is missing, it
+// from the client.TokenQueryParam query string and checks if it is valid. If
+// the token is valid, it sends a response with the "Ok" message. If the token
+// is invalid, it sends an unauthorized response. If the token is missing, it
 // sends a bad request response.
 func (s *Service) validateUserTokenHandler(w http.ResponseWriter, r *http.Request) {
 	// read the app token header
-	appSecret := r.Header.Get(APP_SECRET_HEADER)
+	appSecret := r.Header.Get(client.AppSecretHeader)
 	if appSecret == "" {
 		http.Error(w, "missing app token", http.StatusBadRequest)
 		return
 	}
 	// get the token from the query
-	token := r.URL.Query().Get(USER_TOKEN_QUERY)
+	token := r.URL.Query().Get(client.TokenQueryParam)
 	if token == "" {
 		http.Error(w, "missing token", http.StatusBadRequest)
 		return
@@ -189,13 +183,13 @@ func (s *Service) appTokenHandler(w http.ResponseWriter, r *http.Request) {
 // it sends an internal server error response.
 func (s *Service) appHandler(w http.ResponseWriter, r *http.Request) {
 	// read the app token header
-	appSecret := r.Header.Get(APP_SECRET_HEADER)
+	appSecret := r.Header.Get(client.AppSecretHeader)
 	if appSecret == "" {
 		http.Error(w, "missing app token", http.StatusBadRequest)
 		return
 	}
 	// get the token from the query
-	token := r.URL.Query().Get(USER_TOKEN_QUERY)
+	token := r.URL.Query().Get(client.TokenQueryParam)
 	if token == "" {
 		http.Error(w, "missing token", http.StatusBadRequest)
 		return
@@ -242,13 +236,13 @@ func (s *Service) appHandler(w http.ResponseWriter, r *http.Request) {
 // response.
 func (s *Service) updateAppHandler(w http.ResponseWriter, r *http.Request) {
 	// read the app token header
-	appSecret := r.Header.Get(APP_SECRET_HEADER)
+	appSecret := r.Header.Get(client.AppSecretHeader)
 	if appSecret == "" {
 		http.Error(w, "missing app token", http.StatusBadRequest)
 		return
 	}
 	// get the token from the query
-	token := r.URL.Query().Get(USER_TOKEN_QUERY)
+	token := r.URL.Query().Get(client.TokenQueryParam)
 	if token == "" {
 		http.Error(w, "missing token", http.StatusBadRequest)
 		return
@@ -295,13 +289,13 @@ func (s *Service) updateAppHandler(w http.ResponseWriter, r *http.Request) {
 // goes wrong, it sends an internal server error response.
 func (s *Service) delAppHandler(w http.ResponseWriter, r *http.Request) {
 	// read the app token header
-	appSecret := r.Header.Get(APP_SECRET_HEADER)
+	appSecret := r.Header.Get(client.AppSecretHeader)
 	if appSecret == "" {
 		http.Error(w, "missing app token", http.StatusBadRequest)
 		return
 	}
 	// get the token from the query
-	token := r.URL.Query().Get(USER_TOKEN_QUERY)
+	token := r.URL.Query().Get(client.TokenQueryParam)
 	if token == "" {
 		http.Error(w, "missing token", http.StatusBadRequest)
 		return

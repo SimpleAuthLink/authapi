@@ -1,4 +1,4 @@
-package authapi
+package internal
 
 import (
 	"crypto/sha256"
@@ -6,9 +6,9 @@ import (
 	"math/rand"
 )
 
-// randBytes generates a random byte slice of length n. It returns nil if n is
+// RandBytes generates a random byte slice of length n. It returns nil if n is
 // less than 1.
-func randBytes(n int) []byte {
+func RandBytes(n int) []byte {
 	if n < 1 {
 		return nil
 	}
@@ -24,13 +24,13 @@ func randBytes(n int) []byte {
 	return b
 }
 
-// hash generates a hash of the input string using SHA-256 algorithm. The n
+// Hash generates a hash of the input string using SHA-256 algorithm. The n
 // parameter allows to truncate the hash to n bytes. It returns the hash as a
 // hexadecimal string. The resulting string will have a length of 2*n. If n is
 // less than 1 or greater than the hash length, the full hash will be returned.
 // If the input string is empty, it returns an empty string. If something fails
 // during the hashing process, it returns an error.
-func hash(input string, n int) (string, error) {
+func Hash(input string, n int) (string, error) {
 	if input == "" {
 		return "", nil
 	}

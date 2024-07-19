@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/simpleauthlink/authapi/db"
+	"github.com/simpleauthlink/authapi/internal"
 )
 
 const (
@@ -132,7 +133,7 @@ func (s *Service) removeApp(appId string) error {
 }
 
 func (s *Service) validSecret(appId, rawSecret string) bool {
-	secret, err := hash(rawSecret, 16)
+	secret, err := internal.Hash(rawSecret, 16)
 	if err != nil {
 		return false
 	}
@@ -153,7 +154,7 @@ func generateApp(email string) (string, string, string, error) {
 		return "", "", "", fmt.Errorf("email is required")
 	}
 	// hash email
-	appId, err := hash(email, 4)
+	appId, err := internal.Hash(email, 4)
 	if err != nil {
 		return "", "", "", err
 	}
@@ -171,10 +172,10 @@ func generateApp(email string) (string, string, string, error) {
 // secret is required to store the secret in the database without exposing it.
 func appSecret() (string, string, error) {
 	// generate secret
-	bSecret := randBytes(16)
+	bSecret := internal.RandBytes(16)
 	secret := hex.EncodeToString(bSecret)
 	// hash secret
-	hSecret, err := hash(secret, 16)
+	hSecret, err := internal.Hash(secret, 16)
 	if err != nil {
 		return "", "", err
 	}
