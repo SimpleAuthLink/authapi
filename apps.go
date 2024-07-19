@@ -12,8 +12,8 @@ const (
 	// valid, which is an integer with a value of 60 (seconds).
 	minDuration = 60 // seconds
 	// defaultUsersQuota constant is the default number of users allowed for an
-	// app, which is an integer with a value of 25.
-	defaultUsersQuota = 25 // users
+	// app, which is an integer with a value of 100.
+	defaultUsersQuota = 100 // users
 )
 
 // authApp method creates a new app based on the provided name, email, redirectURL
