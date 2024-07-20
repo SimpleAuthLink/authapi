@@ -13,10 +13,21 @@ import (
 	"github.com/simpleauthlink/authapi/helpers"
 )
 
+// Client struct represents the client to interact with the API server. It
+// contains the configuration of the client. The configuration includes the
+// secret of the app and the API endpoint. The API endpoint is optional and if
+// it is empty, it uses the default API endpoint. The client provides two
+// methods to interact with the API server, RequestToken and ValidateToken.
 type Client struct {
 	config *ClientConfig
 }
 
+// New function creates a new client based on the provided configuration. It
+// returns the client and an error if the configuration is invalid. The
+// configuration must include, at least, the secret of your app. If the API
+// endpoint is empty, it uses the default API endpoint. It validates the config
+// and returns an error if the configuration is nil, the secret is empty or the
+// API endpoint is invalid.
 func New(config *ClientConfig) (*Client, error) {
 	if err := config.check(); err != nil {
 		return nil, err
@@ -24,6 +35,15 @@ func New(config *ClientConfig) (*Client, error) {
 	return &Client{config: config}, nil
 }
 
+// RequestToken function requests a token for the user based on the provided
+// email. It returns an error if the email is empty. It receives the context
+// and the token request. The token request includes the email of the user, the
+// redirect URL and the session duration. The session duration is optional and
+// if it is zero, it uses the default session duration. It creates a new URL
+// based on the API endpoint, encodes the request, creates the request, sets
+// the secret in the header, sets the content type and makes the request. It
+// checks the status code and returns an error if the status code is different
+// from 200, if so returns an error trying to decode the body of the response.
 func (cli *Client) RequestToken(ctx context.Context, req *api.TokenRequest) error {
 	if req == nil || req.Email == "" {
 		return fmt.Errorf("email is required to request a token")
