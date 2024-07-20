@@ -80,18 +80,7 @@ func (s *Service) magicLink(rawSecret, email, redirectURL string, duration uint6
 	urlQuery := baseURL.Query()
 	urlQuery.Set(helpers.TokenQueryParam, token)
 	baseURL.RawQuery = urlQuery.Encode()
-
-	strBaseURL := fmt.Sprintf("%s://%s", baseURL.Scheme, baseURL.Host)
-	if baseURL.Path != "" {
-		strBaseURL += baseURL.Path
-	}
-	if baseURL.Fragment != "" {
-		strBaseURL += fmt.Sprintf("#%s", baseURL.Fragment)
-	}
-	if encoded := urlQuery.Encode(); encoded != "" {
-		strBaseURL += fmt.Sprintf("?%s", encoded)
-	}
-	return strBaseURL, token, app.Name, nil
+	return helpers.SafeURL(baseURL), token, app.Name, nil
 }
 
 // validUserToken function checks if the provided token is valid. It checks if
