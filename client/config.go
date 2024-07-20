@@ -3,6 +3,8 @@ package client
 import (
 	"fmt"
 	"net/url"
+
+	"github.com/simpleauthlink/authapi/helpers"
 )
 
 // ClientConfig struct represents the configuration needed to use the client.
@@ -24,7 +26,7 @@ func (conf *ClientConfig) check() error {
 		return fmt.Errorf("config is required")
 	}
 	if conf.APIEndpoint == "" {
-		conf.APIEndpoint = DefaultAPIEndpoint
+		conf.APIEndpoint = helpers.DefaultAPIEndpoint
 	}
 	if conf.Secret == "" {
 		return fmt.Errorf("secret is required")

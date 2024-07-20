@@ -52,7 +52,7 @@ var (
 type App struct {
 	Name            string
 	AdminEmail      string
-	SessionDuration int64
+	SessionDuration uint64
 	RedirectURL     string
 	UsersQuota      int64
 }

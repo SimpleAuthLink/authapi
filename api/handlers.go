@@ -1,4 +1,4 @@
-package authapi
+package api
 
 import (
 	"encoding/json"
@@ -7,22 +7,22 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/simpleauthlink/authapi/client"
 	"github.com/simpleauthlink/authapi/db"
 	"github.com/simpleauthlink/authapi/email"
+	"github.com/simpleauthlink/authapi/helpers"
 )
 
 // userTokenHandler method generates a token for the user and sends it via email
 // to the user's email address. The token is generated based on the app id
 // and the user's email address. The token is stored in the database with an
-// expiration time. It gets the app secret from the client.AppSecretHeader
+// expiration time. It gets the app secret from the helpers.AppSecretHeader
 // header and the user's email address from the request body. If it success it
 // sends an "Ok" response. If something goes wrong, it sends an internal server
 // error response. If the app secret is missing or the request body is invalid,
 // it sends a bad request response.
 func (s *Service) userTokenHandler(w http.ResponseWriter, r *http.Request) {
 	// read the app token header
-	appSecret := r.Header.Get(client.AppSecretHeader)
+	appSecret := r.Header.Get(helpers.AppSecretHeader)
 	if appSecret == "" {
 		http.Error(w, "missing app token", http.StatusBadRequest)
 		return
@@ -84,19 +84,19 @@ func (s *Service) userTokenHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // validateUserTokenHandler method validates the user token. It gets the token
-// from the client.TokenQueryParam query string and checks if it is valid. If
+// from the helpers.TokenQueryParam query string and checks if it is valid. If
 // the token is valid, it sends a response with the "Ok" message. If the token
 // is invalid, it sends an unauthorized response. If the token is missing, it
 // sends a bad request response.
 func (s *Service) validateUserTokenHandler(w http.ResponseWriter, r *http.Request) {
 	// read the app token header
-	appSecret := r.Header.Get(client.AppSecretHeader)
+	appSecret := r.Header.Get(helpers.AppSecretHeader)
 	if appSecret == "" {
 		http.Error(w, "missing app token", http.StatusBadRequest)
 		return
 	}
 	// get the token from the query
-	token := r.URL.Query().Get(client.TokenQueryParam)
+	token := r.URL.Query().Get(helpers.TokenQueryParam)
 	if token == "" {
 		http.Error(w, "missing token", http.StatusBadRequest)
 		return
@@ -183,13 +183,13 @@ func (s *Service) appTokenHandler(w http.ResponseWriter, r *http.Request) {
 // it sends an internal server error response.
 func (s *Service) appHandler(w http.ResponseWriter, r *http.Request) {
 	// read the app token header
-	appSecret := r.Header.Get(client.AppSecretHeader)
+	appSecret := r.Header.Get(helpers.AppSecretHeader)
 	if appSecret == "" {
 		http.Error(w, "missing app token", http.StatusBadRequest)
 		return
 	}
 	// get the token from the query
-	token := r.URL.Query().Get(client.TokenQueryParam)
+	token := r.URL.Query().Get(helpers.TokenQueryParam)
 	if token == "" {
 		http.Error(w, "missing token", http.StatusBadRequest)
 		return
@@ -236,13 +236,13 @@ func (s *Service) appHandler(w http.ResponseWriter, r *http.Request) {
 // response.
 func (s *Service) updateAppHandler(w http.ResponseWriter, r *http.Request) {
 	// read the app token header
-	appSecret := r.Header.Get(client.AppSecretHeader)
+	appSecret := r.Header.Get(helpers.AppSecretHeader)
 	if appSecret == "" {
 		http.Error(w, "missing app token", http.StatusBadRequest)
 		return
 	}
 	// get the token from the query
-	token := r.URL.Query().Get(client.TokenQueryParam)
+	token := r.URL.Query().Get(helpers.TokenQueryParam)
 	if token == "" {
 		http.Error(w, "missing token", http.StatusBadRequest)
 		return
@@ -289,13 +289,13 @@ func (s *Service) updateAppHandler(w http.ResponseWriter, r *http.Request) {
 // goes wrong, it sends an internal server error response.
 func (s *Service) delAppHandler(w http.ResponseWriter, r *http.Request) {
 	// read the app token header
-	appSecret := r.Header.Get(client.AppSecretHeader)
+	appSecret := r.Header.Get(helpers.AppSecretHeader)
 	if appSecret == "" {
 		http.Error(w, "missing app token", http.StatusBadRequest)
 		return
 	}
 	// get the token from the query
-	token := r.URL.Query().Get(client.TokenQueryParam)
+	token := r.URL.Query().Get(helpers.TokenQueryParam)
 	if token == "" {
 		http.Error(w, "missing token", http.StatusBadRequest)
 		return

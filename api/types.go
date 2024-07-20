@@ -1,4 +1,4 @@
-package authapi
+package api
 
 const (
 	userTokenSubject = "Here is your magic link for '%s' 🔐"
@@ -11,7 +11,7 @@ const (
 type TokenRequest struct {
 	Email       string `json:"email"`
 	RedirectURL string `json:"redirect_url"`
-	Duration    int64  `json:"session_duration"`
+	Duration    uint64 `json:"session_duration"`
 }
 
 // AppData struct includes the required information by the API service to
@@ -20,7 +20,7 @@ type TokenRequest struct {
 type AppData struct {
 	Name         string `json:"name"`
 	Email        string `json:"admin_email"`
-	Duration     int64  `json:"session_duration"`
+	Duration     uint64 `json:"session_duration"`
 	RedirectURL  string `json:"redirect_url"`
 	UsersQuota   int64  `json:"users_quota"`
 	CurrentUsers int64  `json:"current_users"`

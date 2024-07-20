@@ -15,7 +15,7 @@ type App struct {
 	ID              string `bson:"_id"`
 	Name            string `bson:"name"`
 	AdminEmail      string `bson:"admin_email"`
-	SessionDuration int64  `bson:"session_duration"`
+	SessionDuration uint64 `bson:"session_duration"`
 	RedirectURL     string `bson:"redirect_url"`
 	UsersQuota      int64  `bson:"users_quota"`
 	Secret          string `bson:"secret"`

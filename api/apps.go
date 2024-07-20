@@ -1,20 +1,11 @@
-package authapi
+package api
 
 import (
 	"encoding/hex"
 	"fmt"
 
 	"github.com/simpleauthlink/authapi/db"
-	"github.com/simpleauthlink/authapi/internal"
-)
-
-const (
-	// minDuration constant is the minimum duration allowed for a token to be
-	// valid, which is an integer with a value of 60 (seconds).
-	minDuration = 60 // seconds
-	// defaultUsersQuota constant is the default number of users allowed for an
-	// app, which is an integer with a value of 100.
-	defaultUsersQuota = 100 // users
+	"github.com/simpleauthlink/authapi/helpers"
 )
 
 // authApp method creates a new app based on the provided name, email, redirectURL
@@ -26,14 +17,14 @@ const (
 // the app id as the key. The secret is stored in the database using the hashed
 // secret as the key. The hashed secret is required to be compared with the
 // secret provided by the user in the requests.
-func (s *Service) authApp(name, email, redirectURL string, duration int64) (string, string, error) {
+func (s *Service) authApp(name, email, redirectURL string, duration uint64) (string, string, error) {
 	// check if the name, email, and redirectURL are not empty
 	if len(name) == 0 || len(email) == 0 || len(redirectURL) == 0 {
 		return "", "", fmt.Errorf("name, email, and redirectURL are required")
 	}
 	// check if the duration is valid
-	if duration < minDuration {
-		return "", "", fmt.Errorf("duration must be at least %d seconds", minDuration)
+	if duration < helpers.MinTokenDuration {
+		return "", "", fmt.Errorf("duration must be at least %d seconds", helpers.MinTokenDuration)
 	}
 	// compose the app struct for the database
 	appData := &db.App{
@@ -41,7 +32,7 @@ func (s *Service) authApp(name, email, redirectURL string, duration int64) (stri
 		AdminEmail:      email,
 		SessionDuration: duration,
 		RedirectURL:     redirectURL,
-		UsersQuota:      defaultUsersQuota,
+		UsersQuota:      helpers.DefaultUsersQuota,
 	}
 	// generate app based on email
 	appId, secret, hSecret, err := generateApp(appData.AdminEmail)
@@ -86,14 +77,14 @@ func (s *Service) appMetadata(appId string) (AppData, error) {
 // redirectURL, and duration. If the app id is empty, it returns an error. If
 // the duration is non zero an less than the minimum duration, it returns an
 // error. If something fails during the process, it returns an error.
-func (s *Service) updateAppMetadata(appId, name, redirectURL string, duration int64) error {
+func (s *Service) updateAppMetadata(appId, name, redirectURL string, duration uint64) error {
 	// check if the app id is not empty
 	if len(appId) == 0 {
 		return fmt.Errorf("app id is required")
 	}
 	// check if the duration is valid
-	if duration != 0 && duration < minDuration {
-		return fmt.Errorf("duration must be at least %d seconds", minDuration)
+	if duration != 0 && duration < helpers.MinTokenDuration {
+		return fmt.Errorf("duration must be at least %d seconds", helpers.MinTokenDuration)
 	}
 	// get app from the database
 	app, err := s.db.AppById(appId)
@@ -133,7 +124,7 @@ func (s *Service) removeApp(appId string) error {
 }
 
 func (s *Service) validSecret(appId, rawSecret string) bool {
-	secret, err := internal.Hash(rawSecret, 16)
+	secret, err := helpers.Hash(rawSecret, helpers.SecretSize)
 	if err != nil {
 		return false
 	}
@@ -154,7 +145,7 @@ func generateApp(email string) (string, string, string, error) {
 		return "", "", "", fmt.Errorf("email is required")
 	}
 	// hash email
-	appId, err := internal.Hash(email, 4)
+	appId, err := helpers.Hash(email, helpers.AppIdSize)
 	if err != nil {
 		return "", "", "", err
 	}
@@ -172,10 +163,10 @@ func generateApp(email string) (string, string, string, error) {
 // secret is required to store the secret in the database without exposing it.
 func appSecret() (string, string, error) {
 	// generate secret
-	bSecret := internal.RandBytes(16)
+	bSecret := helpers.RandBytes(helpers.SecretSize)
 	secret := hex.EncodeToString(bSecret)
 	// hash secret
-	hSecret, err := internal.Hash(secret, 16)
+	hSecret, err := helpers.Hash(secret, helpers.SecretSize)
 	if err != nil {
 		return "", "", err
 	}

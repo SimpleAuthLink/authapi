@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"time"
 
-	api "github.com/simpleauthlink/authapi"
+	"github.com/simpleauthlink/authapi/api"
 	"github.com/simpleauthlink/authapi/db/mongo"
 	"github.com/simpleauthlink/authapi/email"
 )

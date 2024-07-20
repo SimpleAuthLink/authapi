@@ -1,4 +1,4 @@
-package authapi
+package api
 
 import (
 	"context"
@@ -14,6 +14,7 @@ import (
 	"github.com/lucasmenendez/apihandler"
 	"github.com/simpleauthlink/authapi/db"
 	"github.com/simpleauthlink/authapi/email"
+	"github.com/simpleauthlink/authapi/helpers"
 )
 
 // Config struct represents the configuration needed to init the service. It
@@ -71,17 +72,17 @@ func New(ctx context.Context, db db.DB, cfg *Config) (*Service, error) {
 			},
 		}),
 	}
-	srv.handler.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+	srv.handler.Get(helpers.HealthCheckPath, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 	// user handlers
-	srv.handler.Post("/user", srv.userTokenHandler)
-	srv.handler.Get("/user", srv.validateUserTokenHandler)
+	srv.handler.Post(helpers.UserEndpointPath, srv.userTokenHandler)
+	srv.handler.Get(helpers.UserEndpointPath, srv.validateUserTokenHandler)
 	// app handlers
-	srv.handler.Get("/app", srv.appHandler)
-	srv.handler.Post("/app", srv.appTokenHandler)
-	srv.handler.Put("/app", srv.updateAppHandler)
-	srv.handler.Delete("/app", srv.delAppHandler)
+	srv.handler.Get(helpers.AppEndpointPath, srv.appHandler)
+	srv.handler.Post(helpers.AppEndpointPath, srv.appTokenHandler)
+	srv.handler.Put(helpers.AppEndpointPath, srv.updateAppHandler)
+	srv.handler.Delete(helpers.AppEndpointPath, srv.delAppHandler)
 	// build the http server
 	srv.httpServer = &http.Server{
 		Addr:    fmt.Sprintf("%s:%d", cfg.Server, cfg.ServerPort),

@@ -1,4 +1,4 @@
-package authapi
+package api
 
 import (
 	"fmt"
@@ -7,16 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/simpleauthlink/authapi/client"
 	"github.com/simpleauthlink/authapi/db"
-	"github.com/simpleauthlink/authapi/internal"
-)
-
-const (
-	userIdSize = 4
-	appIdSize  = 4
-	secretSize = 16
-	tokenSize  = 8
+	"github.com/simpleauthlink/authapi/helpers"
 )
 
 // magicLink function generates and returns a magic link, the generated token
@@ -26,13 +18,13 @@ const (
 // calculates the expiration time based on the app session duration. It stores
 // the token and the expiration time in the database. It returns the magic link
 // composed of the app callback and the generated token.
-func (s *Service) magicLink(rawSecret, email, redirectURL string, duration int64) (string, string, string, error) {
+func (s *Service) magicLink(rawSecret, email, redirectURL string, duration uint64) (string, string, string, error) {
 	// check if the secret and email are not empty
 	if len(rawSecret) == 0 || len(email) == 0 {
 		return "", "", "", fmt.Errorf("secret and email are required")
 	}
 	// get app secret from raw secret
-	appSecret, err := internal.Hash(rawSecret, secretSize)
+	appSecret, err := helpers.Hash(rawSecret, helpers.SecretSize)
 	if err != nil {
 		return "", "", "", err
 	}
@@ -51,7 +43,7 @@ func (s *Service) magicLink(rawSecret, email, redirectURL string, duration int64
 		return "", "", "", fmt.Errorf("users quota reached")
 	}
 	// generate token and calculate expiration
-	token, userId, err := client.EncodeUserToken(appId, email)
+	token, userId, err := helpers.EncodeUserToken(appId, email)
 	if err != nil {
 		return "", "", "", err
 	}
@@ -64,7 +56,7 @@ func (s *Service) magicLink(rawSecret, email, redirectURL string, duration int64
 	expiration := time.Now().Add(time.Duration(sessionDuration) * time.Second)
 	// check if there is a token for the user and app in the database and delete
 	// it if it exists
-	tokenPrefix := strings.Join([]string{appId, userId}, client.TokenSeparator)
+	tokenPrefix := strings.Join([]string{appId, userId}, helpers.TokenSeparator)
 	if err := s.db.DeleteTokensByPrefix(tokenPrefix); err != nil {
 		if err != db.ErrTokenNotFound {
 			log.Println("ERR: error checking token:", err)
@@ -86,9 +78,20 @@ func (s *Service) magicLink(rawSecret, email, redirectURL string, duration int64
 		return "", "", "", fmt.Errorf("invalid redirect URL: %w", err)
 	}
 	urlQuery := baseURL.Query()
-	urlQuery.Set(client.TokenQueryParam, token)
+	urlQuery.Set(helpers.TokenQueryParam, token)
 	baseURL.RawQuery = urlQuery.Encode()
-	return baseURL.String(), token, app.Name, nil
+
+	strBaseURL := fmt.Sprintf("%s://%s", baseURL.Scheme, baseURL.Host)
+	if baseURL.Path != "" {
+		strBaseURL += baseURL.Path
+	}
+	if baseURL.Fragment != "" {
+		strBaseURL += fmt.Sprintf("#%s", baseURL.Fragment)
+	}
+	if encoded := urlQuery.Encode(); encoded != "" {
+		strBaseURL += fmt.Sprintf("?%s", encoded)
+	}
+	return strBaseURL, token, app.Name, nil
 }
 
 // validUserToken function checks if the provided token is valid. It checks if
@@ -102,7 +105,7 @@ func (s *Service) validUserToken(token, rawSecret string) bool {
 		return false
 	}
 	// get the app id from the token
-	appId, _, err := client.DecodeUserToken(token)
+	appId, _, err := helpers.DecodeUserToken(token)
 	if err != nil {
 		return false
 	}
@@ -135,7 +138,7 @@ func (s *Service) validAdminToken(token, rawSecret string) (string, bool) {
 		return "", false
 	}
 	// get the app id from the token
-	appId, userId, err := client.DecodeUserToken(token)
+	appId, userId, err := helpers.DecodeUserToken(token)
 	if err != nil {
 		return "", false
 	}
