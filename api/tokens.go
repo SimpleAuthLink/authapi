@@ -131,8 +131,9 @@ func (s *Service) validAdminToken(token, rawSecret string) (string, bool) {
 	if err != nil {
 		return "", false
 	}
-	// the admin has the same id as the app (the hased email)
-	if userId != appId {
+	// the app id is composed by the admin user id hash and a nonce, so
+	// the app id starts with the admin user id, check if so
+	if !strings.HasPrefix(appId, userId) {
 		return "", false
 	}
 	// check if the secret is valid

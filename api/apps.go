@@ -145,10 +145,13 @@ func generateApp(email string) (string, string, string, error) {
 		return "", "", "", fmt.Errorf("email is required")
 	}
 	// hash email
-	appId, err := helpers.Hash(email, helpers.AppIdSize)
+	hEmail, err := helpers.Hash(email, helpers.EmailHashSize)
 	if err != nil {
 		return "", "", "", err
 	}
+	bAppNonce := helpers.RandBytes(helpers.AppNonceSize)
+	hAppNonce := hex.EncodeToString(bAppNonce)
+	appId := hEmail + hAppNonce
 	// generate secret
 	secret, hSecret, err := appSecret()
 	if err != nil {

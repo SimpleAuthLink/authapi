@@ -32,8 +32,15 @@ const (
 	// value of 4 (bytes).
 	UserIdSize = 4
 	// AppIdSize constant is the size of the app id, which is an integer with a
-	// value of 4 (bytes).
-	AppIdSize = 4
+	// value of 8 (bytes).
+	AppIdSize = 8
+	// EmailHashSize constant is the size of the email hash, which is an integer
+	// with a value of 4 (bytes). The email hash is used to generate the user id
+	// and the app id.
+	EmailHashSize = 4
+	// AppNonceSize constant is the size of the app nonce, which is an integer
+	// with a value of 4 (bytes). The app nonce is used to generate the app id.
+	AppNonceSize = 4
 	// SecretSize constant is the size of the secret, which is an integer with a
 	// value of 16 (bytes).
 	SecretSize = 16

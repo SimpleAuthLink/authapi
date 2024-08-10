@@ -17,7 +17,7 @@ import (
 const (
 	defaultHost               = "0.0.0.0"
 	defaultPort               = 8080
-	defaultDatabaseURI        = "mongodb://localhost:27017"
+	defaultDatabaseURI        = "mongodb://admin:password@localhost:27017/"
 	defaultDatabaseName       = "simpleauth"
 	defaultEmailAddr          = ""
 	defaultEmailPass          = ""
@@ -89,7 +89,7 @@ func main() {
 		MongoURI: c.dbURI,
 		Database: c.dbName,
 	}); err != nil {
-		log.Fatalln("error initializing db: %w", err)
+		log.Fatalf("error initializing db: %v", err)
 	}
 	// create the service
 	service, err := api.New(context.Background(), db, &api.Config{
