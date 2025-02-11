@@ -12,9 +12,7 @@ import (
 	"time"
 
 	"github.com/lucasmenendez/apihandler"
-	"github.com/simpleauthlink/authapi/db"
 	"github.com/simpleauthlink/authapi/email"
-	"github.com/simpleauthlink/authapi/helpers"
 )
 
 // Config struct represents the configuration needed to init the service. It
@@ -37,17 +35,16 @@ type Service struct {
 	cancel     context.CancelFunc
 	wait       sync.WaitGroup
 	cfg        *Config
-	db         db.DB
 	emailQueue *email.EmailQueue
 	handler    *apihandler.Handler
 	httpServer *http.Server
 }
 
-// New function creates a new service based on the provided context, the db
-// interface and configuration. It initializes the email queue, creates the
-// service and sets the api handlers. If something goes wrong during the
-// process, it returns an error.
-func New(ctx context.Context, db db.DB, cfg *Config) (*Service, error) {
+// New function creates a new service based on the provided context and
+// configuration. It initializes the email queue, creates the service and
+// sets the api handlers. If something goes wrong during the process, it
+// returns an error.
+func New(ctx context.Context, cfg *Config) (*Service, error) {
 	internalCtx, cancel := context.WithCancel(ctx)
 	emailQueue, err := email.NewEmailQueue(internalCtx, &cfg.EmailConfig)
 	if err != nil {
@@ -62,7 +59,6 @@ func New(ctx context.Context, db db.DB, cfg *Config) (*Service, error) {
 		ctx:        internalCtx,
 		cancel:     cancel,
 		cfg:        cfg,
-		db:         db,
 		emailQueue: emailQueue,
 		handler: apihandler.NewHandler(&apihandler.Config{
 			CORS: true,
@@ -72,17 +68,9 @@ func New(ctx context.Context, db db.DB, cfg *Config) (*Service, error) {
 			},
 		}),
 	}
-	srv.handler.Get(helpers.HealthCheckPath, func(w http.ResponseWriter, r *http.Request) {
+	srv.handler.Get(HealthCheckPath, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
-	// user handlers
-	srv.handler.Post(helpers.UserEndpointPath, srv.userTokenHandler)
-	srv.handler.Get(helpers.UserEndpointPath, srv.validateUserTokenHandler)
-	// app handlers
-	srv.handler.Get(helpers.AppEndpointPath, srv.appHandler)
-	srv.handler.Post(helpers.AppEndpointPath, srv.appTokenHandler)
-	srv.handler.Put(helpers.AppEndpointPath, srv.updateAppHandler)
-	srv.handler.Delete(helpers.AppEndpointPath, srv.delAppHandler)
 	// build the http server
 	srv.httpServer = &http.Server{
 		Addr:    fmt.Sprintf("%s:%d", cfg.Server, cfg.ServerPort),
@@ -96,8 +84,6 @@ func New(ctx context.Context, db db.DB, cfg *Config) (*Service, error) {
 func (s *Service) Start() error {
 	// start the email queue
 	s.emailQueue.Start()
-	// start the token cleaner in the background
-	s.sanityTokenCleaner()
 	// start the api server
 	if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		return err
@@ -109,10 +95,6 @@ func (s *Service) Start() error {
 // background processes to finish. It closes the database. If something goes
 // wrong during the process, it returns an error.
 func (s *Service) Stop() error {
-	// close the database
-	if err := s.db.Close(); err != nil {
-		return fmt.Errorf("error closing db: %w", err)
-	}
 	// stop the email queue
 	s.emailQueue.Stop()
 	// cancel the context and wait for the background processes finish

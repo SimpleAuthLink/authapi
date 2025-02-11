@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/simpleauthlink/authapi/db"
 	"github.com/simpleauthlink/authapi/email"
 )
 
@@ -13,9 +12,7 @@ func TestNew(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	testDB := new(db.TempDriver)
-	testDB.Init(nil)
-	srv, err := New(ctx, testDB, &Config{
+	srv, err := New(ctx, &Config{
 		Server:          "localhost",
 		ServerPort:      8080,
 		CleanerCooldown: 30 * time.Second,
