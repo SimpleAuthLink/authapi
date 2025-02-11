@@ -19,8 +19,8 @@ func TestNew(t *testing.T) {
 		EmailConfig: email.EmailConfig{
 			EmailHost: "smtp.gmail.com",
 			EmailPort: 587,
-			Address:   "",
-			Password:  "",
+			Address:   "test@email.com",
+			Password:  "password1234",
 		},
 	})
 	if err != nil {
