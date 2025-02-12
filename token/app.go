@@ -93,3 +93,10 @@ func (app *App) ID() *AppID {
 	}
 	return new(AppID).SetBytes(app.Marshal())
 }
+
+func (app *App) SetID(id *AppID) *App {
+	if id == nil {
+		return nil
+	}
+	return app.Unmarshal(id.Bytes())
+}

@@ -89,7 +89,6 @@ func TestStringSetStringApp(t *testing.T) {
 	if res := new(App).String(); res != "" {
 		t.Errorf("expected empty string, got %q", res)
 	}
-
 	app := &App{
 		Name:            testAppName,
 		RedirectURI:     testRedirectURI,
@@ -135,11 +134,9 @@ func TestMarshalUnmarshalApp(t *testing.T) {
 	if res := new(App).Marshal(); res != nil {
 		t.Errorf("expected nil, got %v", res)
 	}
-
 	if res := new(App).Unmarshal([]byte{1}); res != nil {
 		t.Errorf("expected nil, got %v", res)
 	}
-
 	app := &App{
 		Name:            testAppName,
 		RedirectURI:     testRedirectURI,
@@ -164,7 +161,6 @@ func TestAppID(t *testing.T) {
 	if id := new(App).ID(); id != nil {
 		t.Errorf("expected nil, got %v", id)
 	}
-
 	app := &App{
 		Name:            testAppName,
 		RedirectURI:     testRedirectURI,
@@ -176,5 +172,15 @@ func TestAppID(t *testing.T) {
 	}
 	if !bytes.Equal(id.Bytes(), app.Marshal()) {
 		t.Errorf("expected %v, got %v", app.Marshal(), id.Bytes())
+	}
+	if res := new(App).SetID(nil); res != nil {
+		t.Errorf("expected nil, got %v", res)
+	}
+	newApp := new(App).SetID(id)
+	if newApp == nil {
+		t.Fatalf("error decoding app ID")
+	}
+	if newApp.String() != app.String() {
+		t.Errorf("expected %s, got %s", app.String(), newApp.String())
 	}
 }

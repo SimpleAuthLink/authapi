@@ -7,8 +7,20 @@ import (
 
 type Expiration time.Time
 
-func NewExpiration(d time.Duration) Expiration {
-	return Expiration(time.Now().Add(d))
+func NewExpiration(d time.Duration) *Expiration {
+	if d < minDuration || d > maxDuration {
+		return nil
+	}
+	exp := Expiration(time.Now().Add(d))
+	return &exp
+}
+
+func (exp *Expiration) Time() time.Time {
+	return time.Time(*exp)
+}
+
+func (exp *Expiration) Valid() bool {
+	return time.Now().Before(exp.Time())
 }
 
 func (exp *Expiration) String() string {
