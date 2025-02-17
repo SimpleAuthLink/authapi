@@ -12,6 +12,8 @@ const (
 	testSessionDuration = time.Minute * 30
 )
 
+var testAppSecret = []byte("super_secret_key")
+
 func TestValidApp(t *testing.T) {
 	app := &App{
 		Name:            testAppName,

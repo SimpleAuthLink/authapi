@@ -3,6 +3,7 @@ package token
 import (
 	"bytes"
 	"crypto/ed25519"
+	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
 )
@@ -30,30 +31,34 @@ func (id *AppID) SetBytes(data []byte) *AppID {
 	return id.SetString(string(data))
 }
 
-func (id *AppID) PrivKey() ed25519.PrivateKey {
+func (id *AppID) PrivKey(secret []byte) ed25519.PrivateKey {
+	hFn := hmac.New(sha256.New, secret)
+
 	bID := id.Bytes()
 	if len(bID) == 0 {
 		return nil
 	}
-	hID := sha256.Sum256(bID)
-	return ed25519.NewKeyFromSeed(hID[:])
+	// hID := sha256.Sum256(bID)
+	hID := hFn.Sum(bID)
+	return ed25519.NewKeyFromSeed(hID[:32])
 }
 
-func (id *AppID) Sign(data []byte) []byte {
-	privKey := id.PrivKey()
+func (id *AppID) Sign(secret, msg []byte) []byte {
+	privKey := id.PrivKey(secret)
 	if len(privKey) == 0 {
 		return nil
 	}
-	hData := sha256.Sum256(data)
-	rawSign := ed25519.Sign(privKey, hData[:])
+	hmsg := sha256.Sum256(msg)
+	data := append(msg, hedgedNonce(privKey[:], hmsg[:])...)
+	rawSign := ed25519.Sign(privKey, data[:])
 	// encode to hex
 	sign := make([]byte, hex.EncodedLen(len(rawSign)))
 	hex.Encode(sign, rawSign)
 	return sign
 }
 
-func (id *AppID) Verify(msg, sig []byte) bool {
-	privKey := id.PrivKey()
+func (id *AppID) Verify(secret, msg, sig []byte) bool {
+	privKey := id.PrivKey(secret)
 	if privKey == nil {
 		return false
 	}
@@ -62,23 +67,24 @@ func (id *AppID) Verify(msg, sig []byte) bool {
 	if _, err := hex.Decode(rawSign, sig); err != nil {
 		return false
 	}
+	hmsg := sha256.Sum256(msg)
+	data := append(msg, hedgedNonce(privKey[:], hmsg[:])...)
 	pubKey := privKey.Public().(ed25519.PublicKey)
-	hMsg := sha256.Sum256(msg)
-	return ed25519.Verify(pubKey, hMsg[:], rawSign)
+	return ed25519.Verify(pubKey, data, rawSign)
 }
 
-func (id *AppID) NewToken(secret, email string) []byte {
+func (id *AppID) NewToken(secret []byte, email string) []byte {
 	app := new(App).SetID(id)
 	if app == nil {
 		return nil
 	}
 	exp := NewExpiration(app.SessionDuration)
-	msg := signMsg(id.Bytes(), []byte(secret), []byte(email), exp.Bytes())
-	sig := id.Sign(msg)
+	msg := signMsg(id.Bytes(), []byte(email), exp.Bytes())
+	sig := id.Sign(secret, msg)
 	return fmtToken(exp.Marshal(), sig)
 }
 
-func (id *AppID) VerifyToken(token []byte, secret, email string) bool {
+func (id *AppID) VerifyToken(secret, token []byte, email string) bool {
 	if len(token) == 0 {
 		return false
 	}
@@ -91,15 +97,27 @@ func (id *AppID) VerifyToken(token []byte, secret, email string) bool {
 		return false
 	}
 	sig := parts[1]
-	msg := signMsg(id.Bytes(), []byte(secret), []byte(email), dExp.Bytes())
-	return id.Verify(msg, sig)
+	msg := signMsg(id.Bytes(), []byte(email), dExp.Bytes())
+	return id.Verify(secret, msg, sig)
 }
 
-func signMsg(id, secret, email, exp []byte) []byte {
-	return bytes.Join([][]byte{id, email, exp, secret}, nil)
+func signMsg(id, email, exp []byte) []byte {
+	res := append(id, email...)
+	return append(res, exp...)
 }
 
 func fmtToken(exp, sig []byte) []byte {
 	t := append(exp, tokenSeparator)
 	return append(t, sig...)
+}
+
+func hedgedNonce(inputs ...[]byte) []byte {
+	if len(inputs) == 0 || len(inputs[0]) == 0 {
+		return nil
+	}
+	hFn := hmac.New(sha256.New, inputs[0])
+	for _, in := range inputs[1:] {
+		hFn.Write(in)
+	}
+	return hFn.Sum(nil)
 }
