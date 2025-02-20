@@ -1,0 +1,133 @@
+package email
+
+import "testing"
+
+var testTemplate = &EmailTemplate{
+	HTML:  "<html><body><h1>{{.Title}}</h1><p>{{.Content}}</p></body></html>",
+	Plain: "Title: {{.Title}}\nContent: {{.Content}}",
+}
+
+type testData struct {
+	Title   string
+	Content string
+}
+
+func TestCompose(t *testing.T) {
+	// valid data
+	data := testData{
+		Title:   "Test Title",
+		Content: "Test Content",
+	}
+	email, err := testTemplate.Compose(testReceiver, testSubject, data)
+	if err != nil {
+		t.Fatalf("expected nil, got error: %v", err)
+	}
+	if email.To != testReceiver {
+		t.Fatalf("got %v, want %v", email.To, testReceiver)
+	}
+	if email.Subject != testSubject {
+		t.Fatalf("got %v, want %v", email.Subject, testSubject)
+	}
+	expectedBody := "<html><body><h1>Test Title</h1><p>Test Content</p></body></html>"
+	expectedPlain := "Title: Test Title\nContent: Test Content"
+	if string(email.Body) != expectedBody {
+		t.Fatalf("got %v, want %v", string(email.Body), expectedBody)
+	}
+	if string(email.PlainBody) != expectedPlain {
+		t.Fatalf("got %v, want %v", string(email.PlainBody), expectedPlain)
+	}
+	// no subject
+	if _, err := testTemplate.Compose(testReceiver, "", data); err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+	// no to address
+	if _, err := testTemplate.Compose("", testSubject, data); err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+	// bad to address
+	if _, err := testTemplate.Compose("wrongEmail", testSubject, data); err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+	// invalid template
+	emptyTemplate := &EmailTemplate{}
+	if _, err := emptyTemplate.Compose(testReceiver, testSubject, data); err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+	// no html template
+	noHTMLTemplate := &EmailTemplate{Plain: testTemplate.Plain}
+	onlyPlainEmail, err := noHTMLTemplate.Compose(testReceiver, testSubject, data)
+	if err != nil {
+		t.Fatalf("expected nil, got error: %v", err)
+	}
+	if onlyPlainEmail.Body != nil {
+		t.Fatalf("expected nil, got %v", string(onlyPlainEmail.Body))
+	}
+	if string(onlyPlainEmail.PlainBody) != expectedPlain {
+		t.Fatalf("got %v, want %v", string(onlyPlainEmail.PlainBody), expectedPlain)
+	}
+	// no plain template
+	noPlainTemplate := &EmailTemplate{HTML: testTemplate.HTML}
+	onlyHTMLEmail, err := noPlainTemplate.Compose(testReceiver, testSubject, data)
+	if err != nil {
+		t.Fatalf("expected nil, got error: %v", err)
+	}
+	if string(onlyHTMLEmail.Body) != expectedBody {
+		t.Fatalf("got %v, want %v", string(onlyHTMLEmail.Body), expectedBody)
+	}
+	if onlyHTMLEmail.PlainBody != nil {
+		t.Fatalf("expected nil, got %v", string(onlyHTMLEmail.PlainBody))
+	}
+
+}
+
+func Test_composePlain(t *testing.T) {
+	// valid data and template
+	data := testData{
+		Title:   "Test Title",
+		Content: "Test Content",
+	}
+	body, err := testTemplate.composePlain(data)
+	if err != nil {
+		t.Fatalf("expected nil, got error: %v", err)
+	}
+	expected := "Title: Test Title\nContent: Test Content"
+	if string(body) != expected {
+		t.Fatalf("got %v, want %v", string(body), expected)
+	}
+	// no plain template
+	wrongPlainTemplate := *testTemplate
+	wrongPlainTemplate.Plain = ""
+	body, err = wrongPlainTemplate.composePlain(data)
+	if err != nil {
+		t.Fatalf("expected nil, got error: %v", err)
+	}
+	if body != nil {
+		t.Fatalf("expected nil, got %v", string(body))
+	}
+}
+
+func Test_composeHTML(t *testing.T) {
+	// valid data and template
+	data := testData{
+		Title:   "Test Title",
+		Content: "Test Content",
+	}
+	body, err := testTemplate.composeHTML(data)
+	if err != nil {
+		t.Fatalf("expected nil, got error: %v", err)
+	}
+	expected := "<html><body><h1>Test Title</h1><p>Test Content</p></body></html>"
+	if string(body) != expected {
+		t.Fatalf("got %v, want %v", string(body), expected)
+	}
+	// no html template
+	wrongHTMLTemplate := *testTemplate
+	wrongHTMLTemplate.HTML = ""
+	body, err = wrongHTMLTemplate.composeHTML(data)
+	if err != nil {
+		t.Fatalf("expected nil, got error: %v", err)
+	}
+	if body != nil {
+		t.Fatalf("expected nil, got %v", string(body))
+	}
+}

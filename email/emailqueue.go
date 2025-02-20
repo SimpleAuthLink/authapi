@@ -4,40 +4,63 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"mime/multipart"
 	"net/mail"
 	"net/smtp"
 	"net/textproto"
-	"regexp"
 	"sync"
-	"time"
 )
 
-// sendRetries is the number of retries to send the email.
-const sendRetries = 3
+// defaultSendRetries is the default number of retries to send the email.
+const defaultSendRetries = 3
 
-// emailRgx is the regular expression used to validate an email address.
-var emailRgx = regexp.MustCompile(`^[\w-\.]+@([\w-]+\.)+[\w-]{2,}$`)
+// Email struct represents the email that is going to be sent. It includes the
+// recipient email address, the subject and the body of the email.
+type Email struct {
+	To        string
+	Subject   string
+	Body      []byte
+	PlainBody []byte
+}
+
+// Valid method checks if the email is valid. It returns true if the recipient
+// email address, the subject and the body are not empty.
+func (e *Email) Valid() bool {
+	if e.Subject == "" || (len(e.Body) == 0 && len(e.PlainBody) == 0) {
+		return false
+	}
+	_, err := mail.ParseAddress(e.To)
+	return err == nil
+}
 
 // EmailConfig struct represents the email configuration that is needed to send
 // an email using and SMTP server. It includes the email address (used as the
 // sender address but also as the username for the SMTP server), the email
 // server hostname, its port and the password.
 type EmailConfig struct {
-	Address            string
-	EmailHost          string
-	EmailPort          int
-	Password           string
-	DisposableSrc      string
-	TokenEmailTemplate string
-	AppEmailTemplate   string
+	FromName     string
+	FromAddress  string
+	SMTPUsername string
+	SMTPPassword string
+	SMTPServer   string
+	SMTPPort     int
+	Retries      int
+	ErrorCh      chan error
 }
 
-// Email struct represents the email that is going to be sent. It includes the
-// recipient email address, the subject and the body of the email.
-type Email struct {
-	To      string
-	Subject string
-	Body    string
+// Valid method checks if the email configuration is valid. It returns true if
+// the sender name, the SMTP server and its port are not empty, and the sender
+// email address is valid. It also sets the number of retries to the default
+// value if it is not set.
+func (cfg *EmailConfig) Valid() bool {
+	if cfg.FromName == "" || cfg.SMTPServer == "" || cfg.SMTPPort == 0 {
+		return false
+	}
+	if cfg.Retries == 0 {
+		cfg.Retries = defaultSendRetries
+	}
+	_, err := mail.ParseAddress(cfg.FromAddress)
+	return err == nil
 }
 
 // EmailQueue struct represents the email queue. It includes the context and the
@@ -45,37 +68,37 @@ type Email struct {
 // the email, the list of emails to send, and the waiter to wait for the
 // background process to finish.
 type EmailQueue struct {
-	ctx               context.Context
-	cancel            context.CancelFunc
-	cfg               *EmailConfig
-	items             []*Email
-	itemsMtx          sync.Mutex
-	waiter            sync.WaitGroup
-	disallowedDomains []string
+	ctx      context.Context
+	cancel   context.CancelFunc
+	cfg      *EmailConfig
+	auth     smtp.Auth
+	items    []*Email
+	itemsMtx sync.Mutex
+	waiter   sync.WaitGroup
+	errCh    chan error
 }
 
 // NewEmailQueue creates a new EmailQueue with the provided configuration.
 func NewEmailQueue(ctx context.Context, cfg *EmailConfig) (*EmailQueue, error) {
 	// check if the configuration is valid
-	if cfg.Address == "" || !emailRgx.MatchString(cfg.Address) ||
-		cfg.EmailHost == "" || cfg.EmailPort == 0 || cfg.Password == "" {
+	if !cfg.Valid() {
 		return nil, ErrInvalidConfig
 	}
+	// init the email queue
 	internalCtx, cancel := context.WithCancel(ctx)
-	// load the disposable domains if a source is provided
-	var err error
-	disallowedDomains := []string{}
-	if cfg.DisposableSrc != "" {
-		disallowedDomains, err = LoadRemoteDisposableDomains(internalCtx, cfg.DisposableSrc)
+	eq := &EmailQueue{
+		ctx:    internalCtx,
+		cancel: cancel,
+		cfg:    cfg,
+		items:  []*Email{},
+		errCh:  cfg.ErrorCh,
+	}
+	// init SMTP auth
+	if cfg.SMTPUsername != "" && cfg.SMTPPassword != "" {
+		eq.auth = smtp.PlainAuth("", cfg.SMTPUsername, cfg.SMTPPassword, cfg.SMTPServer)
 	}
 	// return the email queue
-	return &EmailQueue{
-		ctx:               internalCtx,
-		cancel:            cancel,
-		cfg:               cfg,
-		items:             []*Email{},
-		disallowedDomains: disallowedDomains,
-	}, err
+	return eq, nil
 }
 
 // Start method starts the email queue. It listens for new emails in the queue
@@ -94,16 +117,16 @@ func (eq *EmailQueue) Start() {
 					continue
 				}
 				if err := eq.Send(e); err != nil {
-					fmt.Println(err)
-				} else {
-					eq.Pop()
+					if eq.errCh != nil {
+						eq.errCh <- err
+					}
 				}
 			}
-			time.Sleep(time.Second)
 		}
 	}()
 }
 
+// Stop method stops the email queue.
 func (eq *EmailQueue) Stop() {
 	eq.cancel()
 	eq.waiter.Wait()
@@ -112,27 +135,13 @@ func (eq *EmailQueue) Stop() {
 // Push method adds a new email to the queue.
 func (eq *EmailQueue) Push(e *Email) error {
 	// check if the email is valid
-	if e.To == "" || !emailRgx.MatchString(e.To) || e.Subject == "" || e.Body == "" {
+	if !e.Valid() {
 		return ErrInvalidEmail
-	}
-	// check if the email is allowed
-	if !eq.Allowed(e.To) {
-		return ErrDisallowedDomain
 	}
 	eq.itemsMtx.Lock()
 	eq.items = append(eq.items, e)
 	eq.itemsMtx.Unlock()
 	return nil
-}
-
-// Top method returns the first email in the queue.
-func (eq *EmailQueue) Top() *Email {
-	eq.itemsMtx.Lock()
-	defer eq.itemsMtx.Unlock()
-	if len(eq.items) == 0 {
-		return nil
-	}
-	return eq.items[0]
 }
 
 // Pop method removes the first email in the queue and returns it.
@@ -152,73 +161,78 @@ func (eq *EmailQueue) Pop() *Email {
 // It composes the email message, creates the auth object with the email
 // credentials, the server string with the host and the port, and the receipts.
 // Finally, it sends the email. If something fails during the process, it
-// returns an error.
+// returns an error. It can be used even the queue is not started.
 func (eq *EmailQueue) Send(e *Email) error {
+	// check if the email is valid
+	if !e.Valid() {
+		return ErrInvalidEmail
+	}
 	// compose the email body
-	body, err := eq.encodeEmail(e)
+	body, err := eq.composeBody(e)
 	if err != nil {
-		return fmt.Errorf("error composing email: %w", err)
+		return ErrComposeEmail.With(err)
 	}
-	// check if the email is allowed
-	if !eq.Allowed(e.To) {
-		return ErrDisallowedDomain
-	}
-	// create the auth object with the email credentials
-	auth := smtp.PlainAuth("", eq.cfg.Address, eq.cfg.Password, eq.cfg.EmailHost)
 	// create the server string with the host and the port and the receipts
-	server := fmt.Sprintf("%s:%d", eq.cfg.EmailHost, eq.cfg.EmailPort)
+	server := fmt.Sprintf("%s:%d", eq.cfg.SMTPServer, eq.cfg.SMTPPort)
 	receipts := []string{e.To}
 	// send the email
-	for i := 0; i < sendRetries; i++ {
-		if err = smtp.SendMail(server, auth, eq.cfg.Address, receipts, body); err == nil {
+	for i := 0; i < eq.cfg.Retries; i++ {
+		if err = smtp.SendMail(server, eq.auth, eq.cfg.FromAddress, receipts, body); err == nil {
 			break
 		}
 	}
 	if err != nil {
-		return fmt.Errorf("error sending email: %w", err)
+		return ErrSendEmail.With(err)
 	}
 	return nil
 }
 
-// Allowed method checks if the email address is allowed. It compares the domain
-// with a list of disallowed domains. It returns true if the email address is
-// allowed, otherwise it returns false.
-func (eq *EmailQueue) Allowed(address string) bool {
-	if !emailRgx.MatchString(address) {
-		return false
-	}
-	return CheckEmail(eq.disallowedDomains, address)
-}
-
-// encodeEmail method encodes the email to a byte slice. It validates the from
-// and to addresses, sets the headers for the html email, and writes the body.
-// It returns the encoded email or an error if something fails during the
-// process.
-func (eq *EmailQueue) encodeEmail(email *Email) ([]byte, error) {
-	// validate from address
-	from, err := mail.ParseAddress(eq.cfg.Address)
+// composeBody creates the email body with the message data. It creates a
+// multipart email with a plain text and an HTML part. It returns the email
+// content as a byte slice or an error if the body could not be composed.
+func (eq *EmailQueue) composeBody(msg *Email) ([]byte, error) {
+	// parse 'to' email address
+	to, err := mail.ParseAddress(msg.To)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing address: %w", err)
+		return nil, ErrParseAddress.With(err)
 	}
-	// validate to address
-	to, err := mail.ParseAddress(email.To)
-	if err != nil {
-		return nil, fmt.Errorf("error parsing address: %w", err)
+	// create email headers
+	var headers bytes.Buffer
+	boundary := "----=_Part_0_123456789.123456789"
+	headers.WriteString(fmt.Sprintf("From: %s\r\n", eq.cfg.FromAddress))
+	headers.WriteString(fmt.Sprintf("To: %s\r\n", to.String()))
+	headers.WriteString(fmt.Sprintf("Subject: %s\r\n", msg.Subject))
+	headers.WriteString("MIME-Version: 1.0\r\n")
+	headers.WriteString(fmt.Sprintf("Content-Type: multipart/alternative; boundary=\"%s\"\r\n", boundary))
+	headers.WriteString("\r\n") // blank line between headers and body
+	// create multipart writer
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	if err := writer.SetBoundary(boundary); err != nil {
+		return nil, ErrSetBoundary.With(err)
 	}
-	// set headers for html email
-	header := textproto.MIMEHeader{}
-	header.Set(textproto.CanonicalMIMEHeaderKey("from"), from.Address)
-	header.Set(textproto.CanonicalMIMEHeaderKey("to"), to.Address)
-	header.Set(textproto.CanonicalMIMEHeaderKey("content-type"), "text/html; charset=UTF-8")
-	header.Set(textproto.CanonicalMIMEHeaderKey("mime-version"), "1.0")
-	header.Set(textproto.CanonicalMIMEHeaderKey("subject"), email.Subject)
-	// init empty message
-	var buffer bytes.Buffer
-	// write header
-	for key, value := range header {
-		buffer.WriteString(fmt.Sprintf("%s: %s\r\n", key, value[0]))
+	// plain text part
+	textPart, _ := writer.CreatePart(textproto.MIMEHeader{
+		"Content-Type":              {"text/plain; charset=\"UTF-8\""},
+		"Content-Transfer-Encoding": {"7bit"},
+	})
+	if _, err := textPart.Write(msg.PlainBody); err != nil {
+		return nil, ErrWriteBody.With(err)
 	}
-	// write body
-	buffer.WriteString(fmt.Sprintf("\r\n%s", email.Body))
-	return buffer.Bytes(), nil
+	// HTML part
+	htmlPart, _ := writer.CreatePart(textproto.MIMEHeader{
+		"Content-Type":              {"text/html; charset=\"UTF-8\""},
+		"Content-Transfer-Encoding": {"7bit"},
+	})
+	if _, err := htmlPart.Write(msg.Body); err != nil {
+		return nil, ErrWriteHTMLBody.With(err)
+	}
+	if err := writer.Close(); err != nil {
+		return nil, ErrCloseEmailWriter.With(err)
+	}
+	// combine headers and body and return the content
+	var email bytes.Buffer
+	email.Write(headers.Bytes())
+	email.Write(body.Bytes())
+	return email.Bytes(), nil
 }
