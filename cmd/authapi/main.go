@@ -16,20 +16,15 @@ import (
 const (
 	defaultHost               = "0.0.0.0"
 	defaultPort               = 8080
-	defaultDatabaseURI        = "mongodb://admin:password@localhost:27017/"
-	defaultDatabaseName       = "simpleauth"
 	defaultEmailAddr          = ""
 	defaultEmailPass          = ""
 	defaultEmailHost          = ""
 	defaultEmailPort          = 587
 	defaultTokenEmailTemplate = "assets/token_email_template.html"
 	defaultAppEmailTemplate   = "assets/app_email_template.html"
-	defaultDisposableSrcURL   = "https://raw.githubusercontent.com/disposable-email-domains/disposable-email-domains/master/disposable_email_blocklist.conf"
 
 	hostFlag               = "host"
 	portFlag               = "port"
-	dbURIFlag              = "db-uri"
-	dbNameFlag             = "db-name"
 	emailAddrFlag          = "email-addr"
 	emailPassFlag          = "email-pass"
 	emailHostFlag          = "email-host"
@@ -47,19 +42,15 @@ const (
 	emailPortFlagDesc      = "email server port"
 	tokenEmailTemplateDesc = "path to the html template of new token email"
 	appEmailTemplateDesc   = "path to the html template of new app email"
-	disposableSrcDesc      = "source url of list of disposable emails domains"
 
 	hostEnv               = "SIMPLEAUTH_HOST"
 	portEnv               = "SIMPLEAUTH_PORT"
-	dbURIEnv              = "SIMPLEAUTH_DB_URI"
-	dbNameEnv             = "SIMPLEAUTH_DB_NAME"
 	emailAddrEnv          = "SIMPLEAUTH_EMAIL_ADDR"
 	emailPassEnv          = "SIMPLEAUTH_EMAIL_PASS"
 	emailHostEnv          = "SIMPLEAUTH_EMAIL_HOST"
 	emailPortEnv          = "SIMPLEAUTH_EMAIL_PORT"
 	tokenEmailTemplateEnv = "SIMPLEAUTH_TOKEN_EMAIL_TEMPLATE"
 	appEmailTemplateEnv   = "SIMPLEAUTH_APP_EMAIL_TEMPLATE"
-	disposableSrcEnv      = "SIMPLEAUTH_DISPOSABLE_SRC"
 )
 
 type config struct {
@@ -85,13 +76,12 @@ func main() {
 	// create the service
 	service, err := api.New(context.Background(), &api.Config{
 		EmailConfig: email.EmailConfig{
-			Address:            c.emailAddr,
-			Password:           c.emailPass,
-			EmailHost:          c.emailHost,
-			EmailPort:          c.emailPort,
-			DisposableSrc:      c.disposableSrc,
-			TokenEmailTemplate: c.tokenEmailTemplate,
-			AppEmailTemplate:   c.appEmailTemplate,
+			FromName:     "SimpleAuthLink",
+			FromAddress:  c.emailAddr,
+			SMTPUsername: c.emailAddr,
+			SMTPPassword: c.emailPass,
+			SMTPServer:   c.emailHost,
+			SMTPPort:     c.emailPort,
 		},
 		Server:          c.host,
 		ServerPort:      c.port,
@@ -115,28 +105,22 @@ func parseConfig() (*config, error) {
 	// get config from flags
 	flag.StringVar(&fhost, hostFlag, defaultHost, hostFlagDesc)
 	flag.IntVar(&fport, portFlag, defaultPort, hostFlagDesc)
-	flag.StringVar(&fdbURI, dbURIFlag, defaultDatabaseURI, dbURIFlagDesc)
-	flag.StringVar(&fdbName, dbNameFlag, defaultDatabaseName, dbNameFlagDesc)
 	flag.StringVar(&femailAddr, emailAddrFlag, defaultEmailAddr, emailAddrFlagDesc)
 	flag.StringVar(&femailPass, emailPassFlag, defaultEmailPass, emailPassFlagDesc)
 	flag.StringVar(&femailHost, emailHostFlag, defaultEmailHost, emailHostFlagDesc)
 	flag.StringVar(&ftokenEmailTemplate, tokenEmailTemplateFlag, defaultTokenEmailTemplate, tokenEmailTemplateDesc)
 	flag.StringVar(&fappEmailTemplate, appEmailTemplateFlag, defaultAppEmailTemplate, appEmailTemplateDesc)
 	flag.IntVar(&femailPort, emailPortFlag, defaultEmailPort, emailPortFlagDesc)
-	flag.StringVar(&fdisposableSrc, disposableSrcFlag, defaultDisposableSrcURL, disposableSrcDesc)
 	flag.Parse()
 	// get config from env
 	envHost := os.Getenv(hostEnv)
 	envPort := os.Getenv(portEnv)
-	envDBURI := os.Getenv(dbURIEnv)
-	envDBName := os.Getenv(dbNameEnv)
 	envEmailAddr := os.Getenv(emailAddrEnv)
 	envEmailPass := os.Getenv(emailPassEnv)
 	envEmailHost := os.Getenv(emailHostEnv)
 	envEmailPort := os.Getenv(emailPortEnv)
 	envtokenEmailTemplate := os.Getenv(tokenEmailTemplateEnv)
 	envAppEmailTemplate := os.Getenv(appEmailTemplateEnv)
-	envDisposableSrc := os.Getenv(disposableSrcEnv)
 
 	// check if the required flags are set
 	if femailAddr == "" && envEmailAddr == "" {
@@ -173,12 +157,6 @@ func parseConfig() (*config, error) {
 			return nil, fmt.Errorf("invalid port value: %s", envPort)
 		}
 	}
-	if envDBURI != "" {
-		c.dbURI = envDBURI
-	}
-	if envDBName != "" {
-		c.dbName = envDBName
-	}
 	if envEmailAddr != "" {
 		c.emailAddr = envEmailAddr
 	}
@@ -200,9 +178,6 @@ func parseConfig() (*config, error) {
 	}
 	if envAppEmailTemplate != "" {
 		c.appEmailTemplate = envAppEmailTemplate
-	}
-	if envDisposableSrc != "" {
-		c.disposableSrc = envDisposableSrc
 	}
 	return c, nil
 }
