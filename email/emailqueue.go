@@ -112,8 +112,8 @@ func (eq *EmailQueue) Start() {
 			case <-eq.ctx.Done():
 				return
 			default:
-				e := eq.Pop()
-				if e == nil {
+				e, ok := eq.Pop()
+				if !ok {
 					continue
 				}
 				if err := eq.Send(e); err != nil {
@@ -133,27 +133,27 @@ func (eq *EmailQueue) Stop() {
 }
 
 // Push method adds a new email to the queue.
-func (eq *EmailQueue) Push(e *Email) error {
+func (eq *EmailQueue) Push(e Email) error {
 	// check if the email is valid
 	if !e.Valid() {
 		return ErrInvalidEmail
 	}
 	eq.itemsMtx.Lock()
-	eq.items = append(eq.items, e)
+	eq.items = append(eq.items, &e)
 	eq.itemsMtx.Unlock()
 	return nil
 }
 
 // Pop method removes the first email in the queue and returns it.
-func (eq *EmailQueue) Pop() *Email {
+func (eq *EmailQueue) Pop() (Email, bool) {
 	eq.itemsMtx.Lock()
 	defer eq.itemsMtx.Unlock()
 	if len(eq.items) == 0 {
-		return nil
+		return Email{}, false
 	}
 	e := eq.items[0]
 	eq.items = eq.items[1:]
-	return e
+	return *e, true
 }
 
 // Send method sends the email using the queue configuration. It uses the
@@ -162,7 +162,7 @@ func (eq *EmailQueue) Pop() *Email {
 // credentials, the server string with the host and the port, and the receipts.
 // Finally, it sends the email. If something fails during the process, it
 // returns an error. It can be used even the queue is not started.
-func (eq *EmailQueue) Send(e *Email) error {
+func (eq *EmailQueue) Send(e Email) error {
 	// check if the email is valid
 	if !e.Valid() {
 		return ErrInvalidEmail
@@ -190,7 +190,7 @@ func (eq *EmailQueue) Send(e *Email) error {
 // composeBody creates the email body with the message data. It creates a
 // multipart email with a plain text and an HTML part. It returns the email
 // content as a byte slice or an error if the body could not be composed.
-func (eq *EmailQueue) composeBody(msg *Email) ([]byte, error) {
+func (eq *EmailQueue) composeBody(msg Email) ([]byte, error) {
 	// parse 'to' email address
 	to, err := mail.ParseAddress(msg.To)
 	if err != nil {

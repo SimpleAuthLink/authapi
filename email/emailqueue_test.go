@@ -185,7 +185,7 @@ func TestSendEmail(t *testing.T) {
 		t.Fatal(err)
 	}
 	// send email
-	if err := eq.Send(&Email{
+	if err := eq.Send(Email{
 		To:        testReceiver,
 		Subject:   testSubject,
 		Body:      []byte(testHTMLBody),
@@ -208,6 +208,16 @@ func TestSendEmail(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Error("timed out waiting for the email to be received")
 	}
+	// try to send invalid email
+	if err := eq.Send(Email{}); err == nil {
+		t.Error("expected error sending invalid email")
+	}
+	// try to compose a invalid email
+	if body, err := eq.composeBody(Email{}); err == nil {
+		t.Error("expected error composing invalid email")
+	} else if body != nil {
+		t.Error("expected body to be nil")
+	}
 	// try to send email to an invalid SMTP server
 	badEq, err := NewEmailQueue(ctx, &EmailConfig{
 		SMTPServer:  testServerAddr,
@@ -218,7 +228,7 @@ func TestSendEmail(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := badEq.Send(&Email{
+	if err := badEq.Send(Email{
 		To:        testReceiver,
 		Subject:   testSubject,
 		Body:      nil,
@@ -246,7 +256,7 @@ func TestPushSendEmail(t *testing.T) {
 	eq.Start()
 	defer eq.Stop()
 	// push email
-	if err := eq.Push(&Email{
+	if err := eq.Push(Email{
 		To:        testReceiver,
 		Subject:   testSubject,
 		Body:      nil,
@@ -269,21 +279,7 @@ func TestPushSendEmail(t *testing.T) {
 	// sleep to pop nil email
 	time.Sleep(2 * time.Second)
 	// push invalid email
-	if err := eq.Push(&Email{}); err == nil {
+	if err := eq.Push(Email{}); err == nil {
 		t.Error("expected error pushing invalid email")
-	}
-	// push another email and modify the email queue to fail
-	email := &Email{
-		To:        testReceiver,
-		Subject:   testSubject,
-		Body:      nil,
-		PlainBody: []byte(testBody),
-	}
-	if err := eq.Push(email); err != nil {
-		t.Fatal(err)
-	}
-	email.PlainBody = nil
-	if err := <-errCh; err == nil {
-		t.Error("expected error sending email")
 	}
 }
