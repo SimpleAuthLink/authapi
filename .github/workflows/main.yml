@@ -48,20 +48,23 @@ jobs:
           go-version: "1.23"
       - name: Run Go test -race
         run: go test ./...  -v -race -timeout=1h
-      - name: convert coverage to html
-        run: go tool cover -html=cover.out -o cover.html
-      - name: print test report
+      - name: Rerun Go test to generate coverage report
         run: |
-          set -o pipefail && cat tests.log | node .github/parse-tests.js >> $GITHUB_STEP_SUMMARY
+          go test -v --race -timeout 15m -coverprofile=./cover.out -json ./... > tests.log
+      - name: Convert report to html
+        run: go tool cover -html=cover.out -o cover.html
+      - name: Print coverage report
+        run: |
+          set -o pipefail && cat tests.log | node .github/parse-coverage-report.js >> $GITHUB_STEP_SUMMARY
           echo $GITHUB_STEP_SUMMARY
-      - name: print coverage result
+      - name: Print coverage report
         run: |
           go tool cover -func=cover.out > ./cover.txt
           echo "<details><summary>📏 Tests coverage</summary>" >> $GITHUB_STEP_SUMMARY
           echo -e "\n\`\`\`" >> $GITHUB_STEP_SUMMARY
           cat ./cover.txt >> $GITHUB_STEP_SUMMARY
           echo -e "\`\`\`\n</details>" >> $GITHUB_STEP_SUMMARY
-      - name: store code coverage artifact
+      - name: Store coverage report
         uses: actions/upload-artifact@v4
         with:
           name: report
