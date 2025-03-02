@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/simpleauthlink/authapi/internal"
+	"github.com/simpleauthlink/authapi/notification"
 )
 
 const (
@@ -37,47 +38,57 @@ func TestMain(m *testing.M) {
 }
 
 func TestValidEmail(t *testing.T) {
-	if !(&Email{
-		To:        testReceiver,
-		Subject:   testSubject,
+	if !(&notification.Notification{
+		Params: notification.NotificationParams{
+			To:      testReceiver,
+			Subject: testSubject,
+		},
 		Body:      nil,
 		PlainBody: []byte(testBody),
 	}).Valid() {
 		t.Error("expected email to be valid")
 	}
-	if !(&Email{
-		To:        testReceiver,
-		Subject:   testSubject,
+	if !(&notification.Notification{
+		Params: notification.NotificationParams{
+			To:      testReceiver,
+			Subject: testSubject,
+		},
 		Body:      []byte(testBody),
 		PlainBody: nil,
 	}).Valid() {
 		t.Error("expected email to be valid")
 	}
-	if (&Email{
-		To:        testReceiver,
-		Subject:   "",
+	if (&notification.Notification{
+		Params: notification.NotificationParams{
+			To:      testReceiver,
+			Subject: "",
+		},
 		Body:      nil,
 		PlainBody: []byte(testBody),
 	}).Valid() {
 		t.Error("expected email to be invalid")
 	}
-	if (&Email{
-		To:        "",
-		Subject:   testSubject,
+	if (&notification.Notification{
+		Params: notification.NotificationParams{
+			To:      "",
+			Subject: testSubject,
+		},
 		Body:      nil,
 		PlainBody: []byte(testBody),
 	}).Valid() {
 		t.Error("expected email to be invalid")
 	}
-	if (&Email{
-		To:        "invalidEmail",
-		Subject:   testSubject,
+	if (&notification.Notification{
+		Params: notification.NotificationParams{
+			To:      "invalidEmail",
+			Subject: testSubject,
+		},
 		Body:      nil,
 		PlainBody: []byte(testBody),
 	}).Valid() {
 		t.Error("expected email to be invalid")
 	}
-	if (&Email{}).Valid() {
+	if (&notification.Notification{}).Valid() {
 		t.Error("expected email to be invalid")
 	}
 }
@@ -185,9 +196,11 @@ func TestSendEmail(t *testing.T) {
 		t.Fatal(err)
 	}
 	// send email
-	if err := eq.Send(Email{
-		To:        testReceiver,
-		Subject:   testSubject,
+	if err := eq.Send(notification.Notification{
+		Params: notification.NotificationParams{
+			To:      testReceiver,
+			Subject: testSubject,
+		},
 		Body:      []byte(testHTMLBody),
 		PlainBody: []byte(testBody),
 	}); err != nil {
@@ -209,11 +222,11 @@ func TestSendEmail(t *testing.T) {
 		t.Error("timed out waiting for the email to be received")
 	}
 	// try to send invalid email
-	if err := eq.Send(Email{}); err == nil {
+	if err := eq.Send(notification.Notification{}); err == nil {
 		t.Error("expected error sending invalid email")
 	}
 	// try to compose a invalid email
-	if body, err := eq.composeBody(Email{}); err == nil {
+	if body, err := eq.composeBody(notification.Notification{}); err == nil {
 		t.Error("expected error composing invalid email")
 	} else if body != nil {
 		t.Error("expected body to be nil")
@@ -228,9 +241,11 @@ func TestSendEmail(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := badEq.Send(Email{
-		To:        testReceiver,
-		Subject:   testSubject,
+	if err := badEq.Send(notification.Notification{
+		Params: notification.NotificationParams{
+			To:      testReceiver,
+			Subject: testSubject,
+		},
 		Body:      nil,
 		PlainBody: []byte(testBody),
 	}); err == nil {
@@ -256,9 +271,11 @@ func TestPushSendEmail(t *testing.T) {
 	eq.Start()
 	defer eq.Stop()
 	// push email
-	if err := eq.Push(Email{
-		To:        testReceiver,
-		Subject:   testSubject,
+	if err := eq.Push(notification.Notification{
+		Params: notification.NotificationParams{
+			To:      testReceiver,
+			Subject: testSubject,
+		},
 		Body:      nil,
 		PlainBody: []byte(testBody),
 	}); err != nil {
@@ -279,7 +296,7 @@ func TestPushSendEmail(t *testing.T) {
 	// sleep to pop nil email
 	time.Sleep(2 * time.Second)
 	// push invalid email
-	if err := eq.Push(Email{}); err == nil {
+	if err := eq.Push(notification.Notification{}); err == nil {
 		t.Error("expected error pushing invalid email")
 	}
 }

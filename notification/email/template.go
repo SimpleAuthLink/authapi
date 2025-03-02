@@ -4,6 +4,8 @@ import (
 	"bytes"
 	htmltemplate "html/template"
 	texttemplate "text/template"
+
+	"github.com/simpleauthlink/authapi/notification"
 )
 
 // EmailTemplate is the definition of an email template, which contains the
@@ -18,33 +20,29 @@ type EmailTemplate struct {
 // be filled. It tries to fill both the HTML and plain text templates, but if
 // any of them is missing, it will return an error. If some of the placeholders
 // in the template are not filled, they will be left as they are.
-func (temp *EmailTemplate) Compose(to, subject string, data any) (*Email, error) {
-	if to == "" || subject == "" {
-		return nil, ErrComposeEmail
+func (temp *EmailTemplate) Compose(params notification.NotificationParams, data any) (notification.Notification, error) {
+	if !params.Valid() {
+		return notification.Notification{}, ErrComposeEmail
 	}
 	// compose the html body
 	body, err := temp.composeHTML(data)
 	if err != nil {
-		return nil, err
+		return notification.Notification{}, err
 	}
 	// compose the plain body
 	plainBody, err := temp.composePlain(data)
 	if err != nil {
-		return nil, err
+		return notification.Notification{}, err
 	}
 	// if both bodies are empty, return an error
 	if plainBody == nil && body == nil {
-		return nil, ErrInvalidTemplate
+		return notification.Notification{}, ErrInvalidTemplate
 	}
 	// return the email with the filled bodies
-	email := &Email{
-		To:        to,
-		Subject:   subject,
+	email := notification.Notification{
+		Params:    params,
 		Body:      body,
 		PlainBody: plainBody,
-	}
-	if !email.Valid() {
-		return nil, ErrComposeEmail.Withf("resulting email is not valid")
 	}
 	return email, nil
 }

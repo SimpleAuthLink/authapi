@@ -1,6 +1,10 @@
 package email
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/simpleauthlink/authapi/notification"
+)
 
 var testTemplate = &EmailTemplate{
 	HTML:  "<html><body><h1>{{.Title}}</h1><p>{{.Content}}</p></body></html>",
@@ -18,15 +22,18 @@ func TestCompose(t *testing.T) {
 		Title:   "Test Title",
 		Content: "Test Content",
 	}
-	email, err := testTemplate.Compose(testReceiver, testSubject, data)
+	email, err := testTemplate.Compose(notification.NotificationParams{
+		To:      testReceiver,
+		Subject: testSubject,
+	}, data)
 	if err != nil {
 		t.Fatalf("expected nil, got error: %v", err)
 	}
-	if email.To != testReceiver {
-		t.Fatalf("got %v, want %v", email.To, testReceiver)
+	if email.Params.To != testReceiver {
+		t.Fatalf("got %v, want %v", email.Params.To, testReceiver)
 	}
-	if email.Subject != testSubject {
-		t.Fatalf("got %v, want %v", email.Subject, testSubject)
+	if email.Params.Subject != testSubject {
+		t.Fatalf("got %v, want %v", email.Params.Subject, testSubject)
 	}
 	expectedBody := "<html><body><h1>Test Title</h1><p>Test Content</p></body></html>"
 	expectedPlain := "Title: Test Title\nContent: Test Content"
@@ -37,25 +44,38 @@ func TestCompose(t *testing.T) {
 		t.Fatalf("got %v, want %v", string(email.PlainBody), expectedPlain)
 	}
 	// no subject
-	if _, err := testTemplate.Compose(testReceiver, "", data); err == nil {
+	if _, err := testTemplate.Compose(notification.NotificationParams{
+		To:      testReceiver,
+		Subject: "",
+	}, data); err == nil {
 		t.Fatalf("expected error, got nil")
 	}
 	// no to address
-	if _, err := testTemplate.Compose("", testSubject, data); err == nil {
+	if _, err := testTemplate.Compose(notification.NotificationParams{
+		To:      "",
+		Subject: testSubject,
+	}, data); err == nil {
 		t.Fatalf("expected error, got nil")
 	}
 	// bad to address
-	if _, err := testTemplate.Compose("wrongEmail", testSubject, data); err == nil {
+	if _, err := testTemplate.Compose(notification.NotificationParams{
+		To:      "bad email",
+		Subject: testSubject,
+	}, data); err == nil {
 		t.Fatalf("expected error, got nil")
 	}
 	// invalid template
 	emptyTemplate := &EmailTemplate{}
-	if _, err := emptyTemplate.Compose(testReceiver, testSubject, data); err == nil {
+	validParams := notification.NotificationParams{
+		To:      testReceiver,
+		Subject: testSubject,
+	}
+	if _, err := emptyTemplate.Compose(validParams, data); err == nil {
 		t.Fatalf("expected error, got nil")
 	}
 	// no html template
 	noHTMLTemplate := &EmailTemplate{Plain: testTemplate.Plain}
-	onlyPlainEmail, err := noHTMLTemplate.Compose(testReceiver, testSubject, data)
+	onlyPlainEmail, err := noHTMLTemplate.Compose(validParams, data)
 	if err != nil {
 		t.Fatalf("expected nil, got error: %v", err)
 	}
@@ -67,7 +87,7 @@ func TestCompose(t *testing.T) {
 	}
 	// no plain template
 	noPlainTemplate := &EmailTemplate{HTML: testTemplate.HTML}
-	onlyHTMLEmail, err := noPlainTemplate.Compose(testReceiver, testSubject, data)
+	onlyHTMLEmail, err := noPlainTemplate.Compose(validParams, data)
 	if err != nil {
 		t.Fatalf("expected nil, got error: %v", err)
 	}

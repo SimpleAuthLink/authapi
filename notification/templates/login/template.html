@@ -12,7 +12,7 @@
     </style>
 </head>
 
-<body style="font-family: 'Poppins', Arial, sans-serif">
+<body style="font-family: 'Poppins', Arial, sans-serif; text-align: center;">
     <table width="100%" border="0" cellspacing="0" cellpadding="0">
         <tr>
             <td align="center" style="padding: 20px;">
@@ -20,23 +20,25 @@
                     style="border-collapse: collapse; border: 1px solid #cccccc;">
                     <tr>
                         <td class="header" style="padding: 40px; text-align: center; color: #1d2734; font-size: 24px;">
-                            <img height="48" style="display: inline-block"src="https://simpleauth.link/assets/logo.jpg">
+                            <img src="https://simpleauth.link/assets/logo.jpg" alt="Logo" width="48" height="48" style="display: inline-block;" />
                             <h2 style="display: inline-block">Simple<span style="color: #1c76fd;">Auth</span>.link</h2>
                         </td>
                     </tr>
                     <tr>
-                        <td class="body" style="padding: 40px; text-align: left; font-size: 16px; line-height: 1.6;">
-                            👋 Hi, {{.Email}}!
+                        <td class="body" style="padding: 40px; text-align: center; font-size: 16px; line-height: 1.6;">
+                            <h2>👋 Hi, {{.Email}}!</h2>
                             <br /><br />
-                            Your magic link to login to '{{.AppName}}' is ready 🎉.
+                            Your <b>magic link</b> is ready! 🎉
                             <br /><br />
+                            You can access to your <b>{{.AppName}}</b> account using it 🔐.
+                            <br />
                             Click the button below to login to your account. 👇
                         </td>
                     </tr>
                     <tr>
                         <td style="padding: 0px 40px 0px 40px; text-align: center;">
                             <table cellspacing="0" cellpadding="0" style="margin: auto;">
-                                <tr>
+                                <tr style="padding: 0 30px 0 30px;">
                                     <td align="center"
                                         style="background-color: #1c76fd; padding: 10px 20px; border-radius: 5px;">
                                         <a href="{{.Link}}" target="_blank" style="color: #ffffff; text-decoration: none; font-weight: bold;">Login to
@@ -44,9 +46,15 @@
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td>
+                                    <td style="padding: 0 30px 0 30px;">
                                         <br />
-                                        <small>{{.Token}}</small>
+                                        <small>It contains your login token: </small>
+                                        <br />
+                                        <small><pre style="white-space: pre-wrap;">{{.Token}}</pre></small>
+                                        <br />
+                                        <small>Which is only valid for you and for a short period of time. </small>
+                                        <br />
+                                        <small>If you didn't request this, you can ignore this email.</small>
                                     </td>
                                 </tr>
                             </table>

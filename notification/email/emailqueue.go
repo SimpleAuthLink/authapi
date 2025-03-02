@@ -9,29 +9,12 @@ import (
 	"net/smtp"
 	"net/textproto"
 	"sync"
+
+	"github.com/simpleauthlink/authapi/notification"
 )
 
 // defaultSendRetries is the default number of retries to send the email.
 const defaultSendRetries = 3
-
-// Email struct represents the email that is going to be sent. It includes the
-// recipient email address, the subject and the body of the email.
-type Email struct {
-	To        string
-	Subject   string
-	Body      []byte
-	PlainBody []byte
-}
-
-// Valid method checks if the email is valid. It returns true if the recipient
-// email address, the subject and the body are not empty.
-func (e *Email) Valid() bool {
-	if e.Subject == "" || (len(e.Body) == 0 && len(e.PlainBody) == 0) {
-		return false
-	}
-	_, err := mail.ParseAddress(e.To)
-	return err == nil
-}
 
 // EmailConfig struct represents the email configuration that is needed to send
 // an email using and SMTP server. It includes the email address (used as the
@@ -72,7 +55,7 @@ type EmailQueue struct {
 	cancel   context.CancelFunc
 	cfg      *EmailConfig
 	auth     smtp.Auth
-	items    []*Email
+	items    []*notification.Notification
 	itemsMtx sync.Mutex
 	waiter   sync.WaitGroup
 	errCh    chan error
@@ -90,7 +73,7 @@ func NewEmailQueue(ctx context.Context, cfg *EmailConfig) (*EmailQueue, error) {
 		ctx:    internalCtx,
 		cancel: cancel,
 		cfg:    cfg,
-		items:  []*Email{},
+		items:  []*notification.Notification{},
 		errCh:  cfg.ErrorCh,
 	}
 	// init SMTP auth
@@ -132,28 +115,28 @@ func (eq *EmailQueue) Stop() {
 	eq.waiter.Wait()
 }
 
-// Push method adds a new email to the queue.
-func (eq *EmailQueue) Push(e Email) error {
-	// check if the email is valid
-	if !e.Valid() {
-		return ErrInvalidEmail
-	}
-	eq.itemsMtx.Lock()
-	eq.items = append(eq.items, &e)
-	eq.itemsMtx.Unlock()
-	return nil
-}
-
 // Pop method removes the first email in the queue and returns it.
-func (eq *EmailQueue) Pop() (Email, bool) {
+func (eq *EmailQueue) Pop() (notification.Notification, bool) {
 	eq.itemsMtx.Lock()
 	defer eq.itemsMtx.Unlock()
 	if len(eq.items) == 0 {
-		return Email{}, false
+		return notification.Notification{}, false
 	}
 	e := eq.items[0]
 	eq.items = eq.items[1:]
 	return *e, true
+}
+
+// Push method adds a new email to the queue.
+func (eq *EmailQueue) Push(n notification.Notification) error {
+	// check if the email is valid
+	if !n.Valid() {
+		return ErrInvalidEmail
+	}
+	eq.itemsMtx.Lock()
+	eq.items = append(eq.items, &n)
+	eq.itemsMtx.Unlock()
+	return nil
 }
 
 // Send method sends the email using the queue configuration. It uses the
@@ -162,19 +145,19 @@ func (eq *EmailQueue) Pop() (Email, bool) {
 // credentials, the server string with the host and the port, and the receipts.
 // Finally, it sends the email. If something fails during the process, it
 // returns an error. It can be used even the queue is not started.
-func (eq *EmailQueue) Send(e Email) error {
+func (eq *EmailQueue) Send(n notification.Notification) error {
 	// check if the email is valid
-	if !e.Valid() {
+	if !n.Valid() {
 		return ErrInvalidEmail
 	}
 	// compose the email body
-	body, err := eq.composeBody(e)
+	body, err := eq.composeBody(n)
 	if err != nil {
 		return ErrComposeEmail.With(err)
 	}
 	// create the server string with the host and the port and the receipts
 	server := fmt.Sprintf("%s:%d", eq.cfg.SMTPServer, eq.cfg.SMTPPort)
-	receipts := []string{e.To}
+	receipts := []string{n.Params.To}
 	// send the email
 	for i := 0; i < eq.cfg.Retries; i++ {
 		if err = smtp.SendMail(server, eq.auth, eq.cfg.FromAddress, receipts, body); err == nil {
@@ -190,9 +173,9 @@ func (eq *EmailQueue) Send(e Email) error {
 // composeBody creates the email body with the message data. It creates a
 // multipart email with a plain text and an HTML part. It returns the email
 // content as a byte slice or an error if the body could not be composed.
-func (eq *EmailQueue) composeBody(msg Email) ([]byte, error) {
+func (eq *EmailQueue) composeBody(n notification.Notification) ([]byte, error) {
 	// parse 'to' email address
-	to, err := mail.ParseAddress(msg.To)
+	to, err := mail.ParseAddress(n.Params.To)
 	if err != nil {
 		return nil, ErrParseAddress.With(err)
 	}
@@ -201,7 +184,7 @@ func (eq *EmailQueue) composeBody(msg Email) ([]byte, error) {
 	boundary := "----=_Part_0_123456789.123456789"
 	headers.WriteString(fmt.Sprintf("From: %s\r\n", eq.cfg.FromAddress))
 	headers.WriteString(fmt.Sprintf("To: %s\r\n", to.String()))
-	headers.WriteString(fmt.Sprintf("Subject: %s\r\n", msg.Subject))
+	headers.WriteString(fmt.Sprintf("Subject: %s\r\n", n.Params.Subject))
 	headers.WriteString("MIME-Version: 1.0\r\n")
 	headers.WriteString(fmt.Sprintf("Content-Type: multipart/alternative; boundary=\"%s\"\r\n", boundary))
 	headers.WriteString("\r\n") // blank line between headers and body
@@ -216,7 +199,7 @@ func (eq *EmailQueue) composeBody(msg Email) ([]byte, error) {
 		"Content-Type":              {"text/plain; charset=\"UTF-8\""},
 		"Content-Transfer-Encoding": {"7bit"},
 	})
-	if _, err := textPart.Write(msg.PlainBody); err != nil {
+	if _, err := textPart.Write(n.PlainBody); err != nil {
 		return nil, ErrWriteBody.With(err)
 	}
 	// HTML part
@@ -224,7 +207,7 @@ func (eq *EmailQueue) composeBody(msg Email) ([]byte, error) {
 		"Content-Type":              {"text/html; charset=\"UTF-8\""},
 		"Content-Transfer-Encoding": {"7bit"},
 	})
-	if _, err := htmlPart.Write(msg.Body); err != nil {
+	if _, err := htmlPart.Write(n.Body); err != nil {
 		return nil, ErrWriteHTMLBody.With(err)
 	}
 	if err := writer.Close(); err != nil {
