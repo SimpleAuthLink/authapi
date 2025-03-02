@@ -69,8 +69,16 @@ func TestMain(m *testing.M) {
 	}()
 	defer apiSrv.Stop()
 	// make ping to the server to check if it is running
-	if ok := apiSrv.Ping(); !ok {
-		panic("API server is not running")
+	nRetries := 5
+	for {
+		if nRetries == 0 {
+			panic("API server is not running")
+		}
+		if ok := apiSrv.Ping(); ok {
+			break
+		}
+		nRetries--
+		time.Sleep(time.Second)
 	}
 	// run the tests
 	os.Exit(m.Run())
