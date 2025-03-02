@@ -50,7 +50,7 @@ jobs:
         run: go test ./...  -v -race -timeout=1h
       - name: Rerun Go test to generate coverage report
         run: |
-          go test -v --race -timeout 15m -coverprofile=./cover.out -json ./... > tests.log
+          go test -v -timeout 15m -coverprofile=./cover.out -json ./... > tests.log
       - name: Convert report to html
         run: go tool cover -html=cover.out -o cover.html
       - name: Print coverage report
