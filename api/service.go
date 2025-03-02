@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -12,54 +11,33 @@ import (
 	"time"
 
 	"github.com/lucasmenendez/apihandler"
-	"github.com/simpleauthlink/authapi/email"
+	"github.com/simpleauthlink/authapi/notification"
 )
 
-// Config struct represents the configuration needed to init the service. It
-// includes the email configuration, the server hostname, the server port, the
-// data path to store the database, and the cleaner cooldown to clean the
-// expired tokens.
 type Config struct {
-	email.EmailConfig
-	Server          string
-	ServerPort      int
-	CleanerCooldown time.Duration
+	Server     string
+	ServerPort int
+	Secret     string
 }
 
-// Service struct represents the service that is going to be started. It
-// includes the context and the cancel function to stop the service, the wait
-// group to wait for the background processes to finish, the configuration,
-// the database connection and the api handler.
 type Service struct {
 	ctx        context.Context
 	cancel     context.CancelFunc
 	wait       sync.WaitGroup
 	cfg        *Config
-	emailQueue *email.EmailQueue
+	nq         notification.Queue
 	handler    *apihandler.Handler
 	httpServer *http.Server
 }
 
-// New function creates a new service based on the provided context and
-// configuration. It initializes the email queue, creates the service and
-// sets the api handlers. If something goes wrong during the process, it
-// returns an error.
-func New(ctx context.Context, cfg *Config) (*Service, error) {
+func New(ctx context.Context, cfg *Config, nq notification.Queue) (*Service, error) {
 	internalCtx, cancel := context.WithCancel(ctx)
-	emailQueue, err := email.NewEmailQueue(internalCtx, &cfg.EmailConfig)
-	if err != nil {
-		if emailQueue == nil {
-			cancel()
-			return nil, err
-		}
-		log.Println("WRN: something occurs during email queue creation:", err)
-	}
 	// create the service
 	srv := &Service{
-		ctx:        internalCtx,
-		cancel:     cancel,
-		cfg:        cfg,
-		emailQueue: emailQueue,
+		ctx:    internalCtx,
+		cancel: cancel,
+		cfg:    cfg,
+		nq:     nq,
 		handler: apihandler.NewHandler(&apihandler.Config{
 			CORS: true,
 			RateLimitConfig: &apihandler.RateLimitConfig{
@@ -68,9 +46,13 @@ func New(ctx context.Context, cfg *Config) (*Service, error) {
 			},
 		}),
 	}
+	// register the routes and handlers
 	srv.handler.Get(HealthCheckPath, func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
+		OkResponse().Write(w)
 	})
+	srv.handler.Post(AppsPath, srv.generateAppIDHandler)
+	srv.handler.Post(TokensPath, srv.requestTokenHandler)
+	srv.handler.Put(TokensPath, srv.verifyTokenHandler)
 	// build the http server
 	srv.httpServer = &http.Server{
 		Addr:    fmt.Sprintf("%s:%d", cfg.Server, cfg.ServerPort),
@@ -79,11 +61,8 @@ func New(ctx context.Context, cfg *Config) (*Service, error) {
 	return srv, nil
 }
 
-// Start method starts the service. It starts the token cleaner and the api
-// server. If something goes wrong during the process, it returns an error.
+// Start method starts the service.
 func (s *Service) Start() error {
-	// start the email queue
-	s.emailQueue.Start()
 	// start the api server
 	if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		return err
@@ -91,16 +70,23 @@ func (s *Service) Start() error {
 	return nil
 }
 
-// Stop method stops the service. It cancels the context and waits for the
-// background processes to finish. It closes the database. If something goes
-// wrong during the process, it returns an error.
-func (s *Service) Stop() error {
-	// stop the email queue
-	s.emailQueue.Stop()
+func (s *Service) Stop() {
 	// cancel the context and wait for the background processes finish
 	s.cancel()
 	defer s.wait.Wait()
-	return nil
+}
+
+func (s *Service) Ping() bool {
+	url := fmt.Sprintf("http://%s:%d%s", s.cfg.Server, s.cfg.ServerPort, HealthCheckPath)
+	request, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return false
+	}
+	response, err := http.DefaultClient.Do(request)
+	if err != nil {
+		return false
+	}
+	return response.StatusCode == http.StatusOK
 }
 
 // WaitToShutdown method waits for the service to shutdown. It listens for the
@@ -112,10 +98,6 @@ func (s *Service) WaitToShutdown() error {
 	<-done
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	defer func() {
-		if err := s.Stop(); err != nil {
-			log.Println(err)
-		}
-	}()
+	defer s.Stop()
 	return s.httpServer.Shutdown(ctx)
 }

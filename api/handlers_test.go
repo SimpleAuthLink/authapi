@@ -1,0 +1,202 @@
+package api
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"regexp"
+	"testing"
+	"time"
+
+	"github.com/simpleauthlink/authapi/notification"
+	"github.com/simpleauthlink/authapi/notification/email"
+	"github.com/simpleauthlink/authapi/notification/templates/login"
+	"github.com/simpleauthlink/authapi/token"
+)
+
+type testCaseAPIHandler[ReqType, ResType any] struct {
+	name     string
+	method   string
+	endpoint string
+	header   http.Header
+	request  *ReqType
+	response *ResType
+	err      *APIError
+}
+
+func (testCase testCaseAPIHandler[Rq, Rs]) url() string {
+	return fmt.Sprintf("%s%s", testServerApiURL, testCase.endpoint)
+}
+
+func (testCase testCaseAPIHandler[Rq, Rs]) Run(t *testing.T, parallel bool) {
+	t.Run(testCase.name, func(t *testing.T) {
+		if parallel {
+			t.Parallel()
+		}
+		var reqBuffer io.Reader
+		if testCase.request != nil {
+			rawBody, err := json.Marshal(testCase.request)
+			if err != nil {
+				t.Fatalf("could not marshal request: %v", err)
+			}
+			reqBuffer = bytes.NewReader(rawBody)
+		}
+		req, err := http.NewRequest(testCase.method, testCase.url(), reqBuffer)
+		if err != nil {
+			t.Fatalf("could not create request: %v", err)
+		}
+		req.Header = testCase.header
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatalf("could not send request: %v", err)
+		}
+		defer resp.Body.Close()
+		switch {
+		case testCase.err != nil:
+			if resp.StatusCode != testCase.err.StatusCode {
+				t.Fatalf("expected status code: %d, got: %d", testCase.err.StatusCode, resp.StatusCode)
+			}
+			err := new(APIError)
+			if err := json.NewDecoder(resp.Body).Decode(err); err != nil {
+				t.Fatalf("could not decode error response: %v", err)
+			}
+			if err.Code != testCase.err.Code {
+				t.Fatalf("expected error code: %d, got: %d", testCase.err.Code, err.Code)
+			}
+			return
+		case testCase.response != nil:
+			if resp.StatusCode != http.StatusOK {
+				t.Fatalf("expected status code: %d, got: %d", http.StatusOK, resp.StatusCode)
+			}
+			expected, err := json.Marshal(testCase.response)
+			if err != nil {
+				t.Fatalf("could not marshal response: %v", err)
+			}
+			res, err := io.ReadAll(resp.Body)
+			if err != nil {
+				t.Fatalf("could not read response: %v", err)
+			}
+			if !bytes.Equal(bytes.TrimSpace(expected), bytes.TrimSpace(res)) {
+				t.Fatalf("expected response: %s, got: %s", expected, res)
+			}
+		default:
+			if resp.StatusCode != http.StatusOK {
+				t.Fatalf("expected status code: %d, got: %d", http.StatusOK, resp.StatusCode)
+			}
+		}
+	})
+}
+
+func TestGenerateAppIDHandler(t *testing.T) {
+	testApp := &token.App{
+		Name:            testAppName,
+		RedirectURI:     testAppRedirectURL,
+		SessionDuration: testAppSessionDuration,
+	}
+	testCaseAPIHandler[AppIDRequest, AppIDResponse]{
+		name:     "valid request",
+		method:   http.MethodPost,
+		endpoint: AppsPath,
+		request: &AppIDRequest{
+			Name:        testApp.Name,
+			RedirectURL: testApp.RedirectURI,
+			Duration:    int64(testApp.SessionDuration),
+			Secret:      testAppSecret,
+		},
+		response: &AppIDResponse{
+			ID: testApp.ID().String(),
+		},
+	}.Run(t, true)
+	testCaseAPIHandler[AppIDRequest, AppIDResponse]{
+		name:     "no request",
+		method:   http.MethodPost,
+		endpoint: AppsPath,
+		request:  nil,
+		err:      DecodeAppIDRequestErr,
+	}.Run(t, true)
+	testCaseAPIHandler[AppIDRequest, AppIDResponse]{
+		name:     "invalid request",
+		method:   http.MethodPost,
+		endpoint: AppsPath,
+		request: &AppIDRequest{
+			Name:        testAppName,
+			RedirectURL: testAppRedirectURL,
+			Duration:    int64(time.Second),
+			Secret:      testAppSecret,
+		},
+		err: InvalidAppIDErr,
+	}.Run(t, true)
+}
+
+func TestRequestTokenAndStatusHandler(t *testing.T) {
+	testApp := &token.App{
+		Name:            testAppName,
+		RedirectURI:     testAppRedirectURL,
+		SessionDuration: testAppSessionDuration,
+	}
+	testAppID := testApp.ID()
+	login.Template = email.EmailTemplate{
+		HTML:  "",
+		Plain: `\[{{.Token}}]`,
+	}
+	testCaseAPIHandler[TokenRequest, any]{
+		name:     "valid request",
+		method:   http.MethodPost,
+		endpoint: TokensPath,
+		header: http.Header{
+			AppIDHeader:     []string{testAppID.String()},
+			AppSecretHeader: []string{testAppSecret},
+		},
+		request: &TokenRequest{
+			Email: testUserEmail,
+		},
+		response: nil,
+	}.Run(t, false)
+
+	var testToken *token.Token
+	select {
+	case receivedMsg := <-inboxChan:
+		data := login.Data{
+			AppName: testAppName,
+			Email:   testUserEmail,
+			Token:   `(.+\..+)`,
+			Link:    testAppRedirectURL + receivedMsg,
+		}
+		notification, err := login.Template.Compose(notification.NotificationParams{
+			To:      testUserEmail,
+			Subject: data.Subject(),
+		}, data)
+		if err != nil {
+			t.Fatalf("could not compose notification: %v", err)
+		}
+		tokenRgx := regexp.MustCompile(string(notification.PlainBody))
+		tokenResult := tokenRgx.FindAllStringSubmatch(receivedMsg, -1)
+		if len(tokenResult) < 1 || len(tokenResult[0]) < 2 {
+			t.Fatal("could not find token in email")
+		}
+		testToken = new(token.Token).SetString(tokenResult[0][1])
+		break
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for the email to be received")
+	}
+
+	testCaseAPIHandler[TokenStatusRequest, TokenStatusResponse]{
+		name:     "valid token status request",
+		method:   http.MethodPut,
+		endpoint: TokensPath,
+		header: http.Header{
+			AppIDHeader:     []string{testAppID.String()},
+			AppSecretHeader: []string{testAppSecret},
+		},
+		request: &TokenStatusRequest{
+			Token: testToken.String(),
+			Email: testUserEmail,
+		},
+		response: &TokenStatusResponse{
+			Valid:      true,
+			Expiration: testToken.Expiration().Time(),
+		},
+	}.Run(t, false)
+}
