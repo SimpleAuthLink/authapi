@@ -56,13 +56,27 @@ func TestBytesSetBytesAppID(t *testing.T) {
 }
 
 func TestPrivKeySignVerifyAppID(t *testing.T) {
-	if privKey := new(AppID).PrivKey(testAppSecret); privKey != nil {
+	var nilAppID *AppID
+	if privKey := nilAppID.PrivKey(*testAppSecret); privKey != nil {
 		t.Errorf("expected nil, got %v", privKey)
 	}
-	if sig := new(AppID).Sign(testAppSecret, []byte("test data")); sig != nil {
+	if nilSig := nilAppID.Sign(*testAppSecret, []byte("test data")); nilSig != nil {
+		t.Errorf("expected nil, got %v", nilSig)
+	}
+	if nilVerify := nilAppID.Verify(*testAppSecret, []byte("test data"), []byte("test sig")); nilVerify {
+		t.Errorf("expected signature to be invalid")
+	}
+	badSecret := new(Secret)
+	if nilPrivKey := new(AppID).PrivKey(*badSecret); nilPrivKey != nil {
+		t.Errorf("expected nil, got %v", nilPrivKey)
+	}
+	if privKey := new(AppID).PrivKey(*testAppSecret); privKey != nil {
+		t.Errorf("expected nil, got %v", privKey)
+	}
+	if sig := new(AppID).Sign(*testAppSecret, []byte("test data")); sig != nil {
 		t.Errorf("expected nil, got %v", sig)
 	}
-	if new(AppID).Verify(testAppSecret, []byte("test data"), []byte("test sig")) {
+	if new(AppID).Verify(*testAppSecret, []byte("test data"), []byte("test sig")) {
 		t.Errorf("expected signature to be invalid")
 	}
 	app := &App{
@@ -75,67 +89,84 @@ func TestPrivKeySignVerifyAppID(t *testing.T) {
 		t.Fatalf("error decoding app ID")
 	}
 	data := []byte("test data")
-	sig := id.Sign(testAppSecret, data)
+	sig := id.Sign(*testAppSecret, data)
 	if sig == nil {
 		t.Fatalf("error signing data")
 	}
-	if !id.Verify(testAppSecret, data, sig) {
+	if !id.Verify(*testAppSecret, data, sig) {
 		t.Errorf("expected signature to be valid")
 	}
-	if id.Verify(testAppSecret, data, []byte("invalid sig")) {
+	if id.Verify(*testAppSecret, data, []byte("invalid sig")) {
 		t.Errorf("expected signature to be invalid")
 	}
 }
 
-func TestNewTokenVerifyToken(t *testing.T) {
+func TestMessage(t *testing.T) {
+	if privKey := new(AppID).PrivKey(*testAppSecret); privKey != nil {
+		t.Errorf("expected nil, got %v", privKey)
+	}
+	if sig := new(AppID).Sign(*testAppSecret, []byte("test data")); sig != nil {
+		t.Errorf("expected nil, got %v", sig)
+	}
+}
+
+func TestGenerateTokenVerifyToken(t *testing.T) {
 	t.Parallel()
-	if res := new(AppID).NewToken(nil, ""); res != nil {
+	var nilAppID *AppID
+	if res := nilAppID.GenerateToken(nil, ""); res != nil {
+		t.Errorf("expected nil, got %v", res)
+	}
+	if nilAppID.VerifyToken(nil, *testAppSecret, "") {
+		t.Errorf("expected token to be invalid")
+	}
+	if res := new(AppID).GenerateToken(nil, ""); res != nil {
 		t.Errorf("expected nil, got %v", res)
 	}
 	app := &App{
 		Name:            testAppName,
 		RedirectURI:     testRedirectURI,
-		SessionDuration: 30 * time.Second,
+		SessionDuration: minDuration,
 	}
 	id := app.ID()
 	if id == nil {
 		t.Fatalf("error decoding app ID")
 	}
 	email := "test@email.com"
-	token := id.NewToken(testAppSecret, email)
+	if id.VerifyToken([]byte{}, *testAppSecret, email) {
+		t.Errorf("expected token to be invalid")
+	}
+	dummyToken := new(Token).SetExpiration(*new(Expiration).SetDuration(minDuration * 3))
+	if id.VerifyToken(*dummyToken, *testAppSecret, email) {
+		t.Errorf("expected token to be invalid")
+	}
+	dummyToken = new(Token).SetSignature([]byte("test"))
+	if id.VerifyToken(*dummyToken, *testAppSecret, email) {
+		t.Errorf("expected token to be invalid")
+	}
+	if invalidToken := id.GenerateToken(*testAppSecret, ""); invalidToken != nil {
+		t.Fatalf("expected nil, got %v", invalidToken)
+	}
+
+	token := id.GenerateToken(*testAppSecret, email)
 	if token == nil {
 		t.Fatalf("error creating token")
 	}
-	if !id.VerifyToken(testAppSecret, token, email) {
+	if id.VerifyToken(token, *testAppSecret, "") {
+		t.Errorf("expected token to be invalid")
+	}
+	if !id.VerifyToken(token, *testAppSecret, email) {
 		t.Errorf("expected token to be valid")
 	}
-	time.Sleep(app.SessionDuration + 1)
-	if id.VerifyToken(testAppSecret, token, email) {
+	time.Sleep(app.SessionDuration + time.Second)
+	if id.VerifyToken(token, *testAppSecret, email) {
 		t.Errorf("expected token to be invalid")
 	}
-	if id.VerifyToken(testAppSecret, nil, email) {
+	if id.VerifyToken(nil, *testAppSecret, email) {
 		t.Errorf("expected token to be invalid")
 	}
-	exp := NewExpiration(minDuration)
-	if id.VerifyToken(testAppSecret, exp.Marshal(), email) {
+	exp := new(Expiration).SetDuration(minDuration)
+	if id.VerifyToken(exp.Marshal(), *testAppSecret, email) {
 		t.Errorf("expected token to be invalid")
-	}
-}
-
-func Test_signMsg(t *testing.T) {
-	expected := []byte("testcombineddata")
-	if res := signMsg([]byte("test"), []byte("combined"), []byte("data")); !bytes.Equal(res, expected) {
-		t.Errorf("expected %v, got %v", expected, res)
-	}
-}
-
-func Test_fmtToken(t *testing.T) {
-	sig := []byte("testsig")
-	exp := []byte("testexp")
-	expected := append(exp, tokenSeparator)
-	expected = append(expected, sig...)
-	if res := fmtToken(exp, sig); !bytes.Equal(res, expected) {
-		t.Errorf("expected %v, got %v", expected, res)
 	}
 }
 

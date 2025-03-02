@@ -6,36 +6,52 @@ import (
 	"time"
 )
 
-func TestNewExpirationTime(t *testing.T) {
-	exp := NewExpiration(minDuration - 1)
-	if exp != nil {
-		t.Fatalf("expected nil, got %v", exp)
-	}
-	exp = NewExpiration(minDuration * 2)
-	if exp == nil {
-		t.Fatalf("expected valid expiration, got nil")
-	}
-	expTime := exp.Time()
-	expected := time.Now().Add(minDuration * 2)
-	if expected.Sub(expTime) > time.Millisecond*50 {
-		t.Errorf("expected %v, got %v", expected, expTime)
-	}
-}
-
-func TestExpirationValid(t *testing.T) {
+func TestValidExpiration(t *testing.T) {
 	t.Parallel()
-	exp := NewExpiration(minDuration)
+	exp := new(Expiration).SetDuration(minDuration + time.Second)
 	if !exp.Valid() {
 		t.Errorf("expected valid expiration, got invalid")
 	}
-	time.Sleep(minDuration)
+	time.Sleep(minDuration + (time.Second * 2))
 	if exp.Valid() {
 		t.Errorf("expected invalid expiration, got valid")
 	}
 }
 
+func TestTimeSetTimeExpiration(t *testing.T) {
+	var nilExp *Expiration
+	exp := nilExp.SetTime(time.Now().Add(minDuration * 2))
+	if exp == nil {
+		t.Fatalf("expected valid expiration, got nil")
+	}
+	exp = new(Expiration).SetTime(time.Now().Add(minDuration * 2))
+	if exp == nil {
+		t.Fatalf("expected valid expiration, got nil")
+	}
+	expTime := exp.Time()
+	expected := time.Now().Add(minDuration * 2)
+	if expected.Sub(expTime) > time.Millisecond*300 {
+		t.Errorf("expected %v, got %v", expected, expTime)
+	}
+}
+
+func TestDurationSetDurationExpiration(t *testing.T) {
+	exp := new(Expiration).SetDuration(minDuration - 1)
+	if exp != nil {
+		t.Fatalf("expected nil, got %v", exp)
+	}
+	exp = exp.SetDuration(minDuration * 2)
+	if exp == nil {
+		t.Fatalf("expected valid expiration, got nil")
+	}
+	expectedDuration := time.Duration(minDuration * 2)
+	if expectedDuration-exp.Duration() > time.Millisecond*300 {
+		t.Errorf("expected %v, got %v", expectedDuration, exp.Duration())
+	}
+}
+
 func TestStringSetStringExpiration(t *testing.T) {
-	exp := NewExpiration(minDuration)
+	exp := new(Expiration).SetDuration(minDuration * 2)
 	str := exp.String()
 	decoded := new(Expiration).SetString(str)
 	if decoded == nil {
@@ -50,10 +66,14 @@ func TestStringSetStringExpiration(t *testing.T) {
 	if exp := new(Expiration).String(); exp != "" {
 		t.Errorf("expected empty string, got %v", exp)
 	}
+	var nilExp *Expiration
+	if exp := nilExp.String(); exp != "" {
+		t.Errorf("expected empty string, got %v", exp)
+	}
 }
 
 func TestBytesSetBytesExpiration(t *testing.T) {
-	exp := NewExpiration(minDuration)
+	exp := new(Expiration).SetDuration(minDuration * 2)
 	b := exp.Bytes()
 	decoded := new(Expiration).SetBytes(b)
 	if decoded == nil {
@@ -71,7 +91,7 @@ func TestBytesSetBytesExpiration(t *testing.T) {
 }
 
 func TestMarshalUnmarshalExpiration(t *testing.T) {
-	exp := NewExpiration(minDuration)
+	exp := new(Expiration).SetDuration(minDuration * 2)
 	encoded := exp.Marshal()
 	decoded := new(Expiration).Unmarshal(encoded)
 	if decoded == nil {

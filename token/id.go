@@ -1,11 +1,10 @@
 package token
 
 import (
-	"bytes"
 	"crypto/ed25519"
 	"crypto/hmac"
 	"crypto/sha256"
-	"encoding/hex"
+	"encoding/base64"
 )
 
 type AppID string
@@ -31,84 +30,98 @@ func (id *AppID) SetBytes(data []byte) *AppID {
 	return id.SetString(string(data))
 }
 
-func (id *AppID) PrivKey(secret []byte) ed25519.PrivateKey {
-	hFn := hmac.New(sha256.New, secret)
-
+func (id *AppID) PrivKey(secret Secret) ed25519.PrivateKey {
+	if id == nil {
+		return nil
+	}
+	if !secret.Valid() {
+		return nil
+	}
 	bID := id.Bytes()
 	if len(bID) == 0 {
 		return nil
 	}
-	// hID := sha256.Sum256(bID)
+	hFn := hmac.New(sha256.New, secret.Bytes())
 	hID := hFn.Sum(bID)
 	return ed25519.NewKeyFromSeed(hID[:32])
 }
 
-func (id *AppID) Sign(secret, msg []byte) []byte {
+func (id *AppID) Sign(secret Secret, msg []byte) []byte {
+	if id == nil || len(msg) == 0 {
+		return nil
+	}
 	privKey := id.PrivKey(secret)
 	if len(privKey) == 0 {
 		return nil
 	}
-	hmsg := sha256.Sum256(msg)
-	data := append(msg, hedgedNonce(privKey[:], hmsg[:])...)
+	data := append(msg, hedgedNonce(privKey[:], msg)...)
 	rawSign := ed25519.Sign(privKey, data[:])
-	// encode to hex
-	sign := make([]byte, hex.EncodedLen(len(rawSign)))
-	hex.Encode(sign, rawSign)
+	// encode to base64
+	sign := make([]byte, base64.RawStdEncoding.EncodedLen(len(rawSign)))
+	base64.RawStdEncoding.Encode(sign, rawSign)
 	return sign
 }
 
-func (id *AppID) Verify(secret, msg, sig []byte) bool {
+func (id *AppID) Verify(secret Secret, msg, sig []byte) bool {
+	if id == nil || len(msg) == 0 || len(sig) == 0 {
+		return false
+	}
 	privKey := id.PrivKey(secret)
 	if privKey == nil {
 		return false
 	}
-	// decode sign from hex
-	rawSign := make([]byte, hex.DecodedLen(len(sig)))
-	if _, err := hex.Decode(rawSign, sig); err != nil {
+	// decode sign from base64
+	rawSign := make([]byte, base64.RawStdEncoding.DecodedLen(len(sig)))
+	if _, err := base64.RawStdEncoding.Decode(rawSign, sig); err != nil {
 		return false
 	}
-	hmsg := sha256.Sum256(msg)
-	data := append(msg, hedgedNonce(privKey[:], hmsg[:])...)
+	data := append(msg, hedgedNonce(privKey[:], msg)...)
 	pubKey := privKey.Public().(ed25519.PublicKey)
 	return ed25519.Verify(pubKey, data, rawSign)
 }
 
-func (id *AppID) NewToken(secret []byte, email string) []byte {
+func (id *AppID) GenerateToken(secret Secret, email string) Token {
+	if id == nil {
+		return nil
+	}
 	app := new(App).SetID(id)
 	if app == nil {
 		return nil
 	}
-	exp := NewExpiration(app.SessionDuration)
-	msg := signMsg(id.Bytes(), []byte(email), exp.Bytes())
+	exp := new(Expiration).SetDuration(app.SessionDuration)
+	msg := id.Message(email, *exp)
 	sig := id.Sign(secret, msg)
-	return fmtToken(exp.Marshal(), sig)
+	if len(sig) == 0 {
+		return nil
+	}
+	return *new(Token).SetExpiration(*exp).SetSignature(sig)
 }
 
-func (id *AppID) VerifyToken(secret, token []byte, email string) bool {
-	if len(token) == 0 {
+func (id *AppID) Message(email string, exp Expiration) []byte {
+	if id == nil || len(email) == 0 || !exp.Valid() {
+		return nil
+	}
+	hmsg := sha256.Sum256(append(append(id.Bytes(), []byte(email)...), exp.Bytes()...))
+	return hmsg[:]
+}
+
+func (id *AppID) VerifyToken(token Token, secret Secret, email string) bool {
+	if id == nil {
 		return false
 	}
-	parts := bytes.Split(token, []byte{tokenSeparator})
-	if len(parts) != 2 {
+	exp := token.Expiration()
+	if exp == nil || !exp.Valid() {
 		return false
 	}
-	dExp := new(Expiration).Unmarshal(parts[0])
-	if dExp == nil || !dExp.Valid() {
+	sig := token.Signature()
+	if len(sig) == 0 {
 		return false
 	}
-	sig := parts[1]
-	msg := signMsg(id.Bytes(), []byte(email), dExp.Bytes())
+	msg := id.Message(email, *exp)
+	if len(msg) == 0 {
+		return false
+	}
 	return id.Verify(secret, msg, sig)
-}
-
-func signMsg(id, email, exp []byte) []byte {
-	res := append(id, email...)
-	return append(res, exp...)
-}
-
-func fmtToken(exp, sig []byte) []byte {
-	t := append(exp, tokenSeparator)
-	return append(t, sig...)
 }
 
 func hedgedNonce(inputs ...[]byte) []byte {

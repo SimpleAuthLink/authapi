@@ -7,24 +7,43 @@ import (
 
 type Expiration time.Time
 
-func NewExpiration(d time.Duration) *Expiration {
-	if d < minDuration || d > maxDuration {
-		return nil
-	}
-	exp := Expiration(time.Now().Add(d))
-	return &exp
+func (exp *Expiration) Valid() bool {
+	return time.Now().Before(exp.Time())
 }
 
 func (exp *Expiration) Time() time.Time {
 	return time.Time(*exp)
 }
 
-func (exp *Expiration) Valid() bool {
-	return time.Now().Before(exp.Time())
+func (exp *Expiration) SetTime(t time.Time) *Expiration {
+	// if no expiration is provided, initialize a new one
+	if exp == nil {
+		exp = new(Expiration)
+	}
+	// set the expiration time
+	*exp = Expiration(t)
+	return exp
+}
+
+func (exp *Expiration) Duration() time.Duration {
+	return time.Until(exp.Time())
+}
+
+func (exp *Expiration) SetDuration(d time.Duration) *Expiration {
+	if d < minDuration || d > maxDuration {
+		return nil
+	}
+	if exp == nil {
+		exp = new(Expiration)
+	}
+	return exp.SetTime(time.Now().Add(d))
 }
 
 func (exp *Expiration) String() string {
-	t := time.Time(*exp)
+	if exp == nil {
+		return ""
+	}
+	t := exp.Time()
 	if t.IsZero() {
 		return ""
 	}
