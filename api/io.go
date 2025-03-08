@@ -26,15 +26,19 @@ func OkResponse() *Response[any] {
 	return &Response[any]{empty: true}
 }
 
-func (r *Response[T]) Write(w http.ResponseWriter) error {
+func (r *Response[T]) WriteJSON(w http.ResponseWriter) {
 	if !r.empty {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		return json.NewEncoder(w).Encode(r.Data)
+		if err := json.NewEncoder(w).Encode(r.Data); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		return
 	}
 	w.WriteHeader(http.StatusOK)
-	_, err := w.Write([]byte("OK"))
-	return err
+	if _, err := w.Write([]byte("OK")); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 type Request[T any] struct {

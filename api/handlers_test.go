@@ -30,11 +30,8 @@ func (testCase testCaseAPIHandler[Rq, Rs]) url() string {
 	return fmt.Sprintf("%s%s", testServerApiURL, testCase.endpoint)
 }
 
-func (testCase testCaseAPIHandler[Rq, Rs]) Run(t *testing.T, parallel bool) {
+func (testCase testCaseAPIHandler[Rq, Rs]) Run(t *testing.T) {
 	t.Run(testCase.name, func(t *testing.T) {
-		if parallel {
-			t.Parallel()
-		}
 		var reqBuffer io.Reader
 		if testCase.request != nil {
 			rawBody, err := json.Marshal(testCase.request)
@@ -108,14 +105,14 @@ func TestGenerateAppIDHandler(t *testing.T) {
 		response: &AppIDResponse{
 			ID: testApp.ID().String(),
 		},
-	}.Run(t, true)
+	}.Run(t)
 	testCaseAPIHandler[AppIDRequest, AppIDResponse]{
 		name:     "no request",
 		method:   http.MethodPost,
 		endpoint: AppsPath,
 		request:  nil,
 		err:      DecodeAppIDRequestErr,
-	}.Run(t, true)
+	}.Run(t)
 	testCaseAPIHandler[AppIDRequest, AppIDResponse]{
 		name:     "invalid request",
 		method:   http.MethodPost,
@@ -127,7 +124,7 @@ func TestGenerateAppIDHandler(t *testing.T) {
 			Secret:      testAppSecret,
 		},
 		err: InvalidAppIDErr,
-	}.Run(t, true)
+	}.Run(t)
 }
 
 func TestRequestTokenAndStatusHandler(t *testing.T) {
@@ -149,7 +146,7 @@ func TestRequestTokenAndStatusHandler(t *testing.T) {
 		},
 		response: nil,
 		err:      InvalidAppHeadersErr,
-	}.Run(t, false)
+	}.Run(t)
 	testCaseAPIHandler[TokenRequest, any]{
 		name:     "invalid app id request",
 		method:   http.MethodPost,
@@ -163,7 +160,7 @@ func TestRequestTokenAndStatusHandler(t *testing.T) {
 		},
 		response: nil,
 		err:      InvalidAppIDErr,
-	}.Run(t, false)
+	}.Run(t)
 	testCaseAPIHandler[TokenRequest, any]{
 		name:     "no app secret request",
 		method:   http.MethodPost,
@@ -176,7 +173,7 @@ func TestRequestTokenAndStatusHandler(t *testing.T) {
 		},
 		response: nil,
 		err:      InvalidAppHeadersErr,
-	}.Run(t, false)
+	}.Run(t)
 	testCaseAPIHandler[TokenRequest, any]{
 		name:     "no email provided",
 		method:   http.MethodPost,
@@ -190,7 +187,7 @@ func TestRequestTokenAndStatusHandler(t *testing.T) {
 		},
 		response: nil,
 		err:      GenerateTokenErr,
-	}.Run(t, false)
+	}.Run(t)
 	invalid := []byte("invalid")
 	testCaseAPIHandler[[]byte, any]{
 		name:     "no request",
@@ -203,7 +200,7 @@ func TestRequestTokenAndStatusHandler(t *testing.T) {
 		request:  &invalid,
 		response: nil,
 		err:      DecodeTokenRequestErr,
-	}.Run(t, false)
+	}.Run(t)
 
 	login.Template = email.EmailTemplate{
 		HTML:  "",
@@ -221,7 +218,7 @@ func TestRequestTokenAndStatusHandler(t *testing.T) {
 			Email: testUserEmail,
 		},
 		response: nil,
-	}.Run(t, false)
+	}.Run(t)
 
 	var testToken *token.Token
 	select {
@@ -266,5 +263,59 @@ func TestRequestTokenAndStatusHandler(t *testing.T) {
 			Valid:      true,
 			Expiration: testToken.Expiration().Time(),
 		},
-	}.Run(t, false)
+	}.Run(t)
+
+	testCaseAPIHandler[TokenStatusRequest, any]{
+		name:     "invalid app id",
+		method:   http.MethodPut,
+		endpoint: TokensPath,
+		header: http.Header{
+			AppIDHeader:     []string{"invalid"},
+			AppSecretHeader: []string{testAppSecret},
+		},
+		request: &TokenStatusRequest{
+			Token: testToken.String(),
+			Email: testUserEmail,
+		},
+		response: nil,
+		err:      InvalidAppIDErr,
+	}.Run(t)
+
+	testCaseAPIHandler[TokenStatusRequest, any]{
+		name:     "no app secret",
+		method:   http.MethodPut,
+		endpoint: TokensPath,
+		header: http.Header{
+			AppIDHeader: []string{testAppID.String()},
+		},
+		request: &TokenStatusRequest{
+			Token: testToken.String(),
+			Email: testUserEmail,
+		},
+		response: nil,
+		err:      InvalidAppHeadersErr,
+	}.Run(t)
+
+	testCaseAPIHandler[TokenStatusRequest, any]{
+		name:     "no headers",
+		method:   http.MethodPut,
+		endpoint: TokensPath,
+		request: &TokenStatusRequest{
+			Token: testToken.String(),
+			Email: testUserEmail,
+		},
+		response: nil,
+		err:      InvalidAppHeadersErr,
+	}.Run(t)
+
+	testCaseAPIHandler[any, any]{
+		name:     "no request",
+		method:   http.MethodPut,
+		endpoint: TokensPath,
+		header: http.Header{
+			AppIDHeader:     []string{testAppID.String()},
+			AppSecretHeader: []string{testAppSecret},
+		},
+		err: DecodeTokenStatusRequestErr,
+	}.Run(t)
 }

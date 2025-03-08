@@ -22,9 +22,7 @@ func (s *Service) generateAppIDHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// return the app id
-	if err := ResponseWith(&AppIDResponse{app.ID().String()}).Write(w); err != nil {
-		EncodeAppIDResponseErr.WithErr(err).Write(w)
-	}
+	ResponseWith(&AppIDResponse{app.ID().String()}).WriteJSON(w)
 }
 
 func (s *Service) requestTokenHandler(w http.ResponseWriter, r *http.Request) {
@@ -79,9 +77,7 @@ func (s *Service) requestTokenHandler(w http.ResponseWriter, r *http.Request) {
 		SendEmailErr.WithErr(err).Write(w)
 		return
 	}
-	if err := OkResponse().Write(w); err != nil {
-		InternalErr.WithErr(err).Write(w)
-	}
+	OkResponse().WriteJSON(w)
 }
 
 func (s *Service) verifyTokenHandler(w http.ResponseWriter, r *http.Request) {
@@ -114,11 +110,8 @@ func (s *Service) verifyTokenHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ok := appID.VerifyToken(*tkn, *secret, req.Data.Email)
-	if err := ResponseWith(&TokenStatusResponse{
+	ResponseWith(&TokenStatusResponse{
 		Valid:      ok,
 		Expiration: exp,
-	}).Write(w); err != nil {
-		EncodeTokenStatusResponseErr.WithErr(err).Write(w)
-		return
-	}
+	}).WriteJSON(w)
 }

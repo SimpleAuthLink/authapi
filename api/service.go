@@ -32,23 +32,18 @@ type Service struct {
 
 func New(ctx context.Context, cfg *Config, nq notification.Queue) (*Service, error) {
 	internalCtx, cancel := context.WithCancel(ctx)
+	rateLimiter := apihandler.RateLimiter(internalCtx, 100, 100, time.Minute*3)
 	// create the service
 	srv := &Service{
-		ctx:    internalCtx,
-		cancel: cancel,
-		cfg:    cfg,
-		nq:     nq,
-		handler: apihandler.NewHandler(&apihandler.Config{
-			CORS: true,
-			RateLimitConfig: &apihandler.RateLimitConfig{
-				Rate:  2,
-				Limit: 10,
-			},
-		}),
+		ctx:     internalCtx,
+		cancel:  cancel,
+		cfg:     cfg,
+		nq:      nq,
+		handler: apihandler.NewHandler(true, rateLimiter),
 	}
 	// register the routes and handlers
 	srv.handler.Get(HealthCheckPath, func(w http.ResponseWriter, r *http.Request) {
-		OkResponse().Write(w)
+		OkResponse().WriteJSON(w)
 	})
 	srv.handler.Post(AppsPath, srv.generateAppIDHandler)
 	srv.handler.Post(TokensPath, srv.requestTokenHandler)
