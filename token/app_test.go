@@ -58,7 +58,6 @@ func TestAttributesSetAttributesApp(t *testing.T) {
 	if res := new(App).SetAttributes([]string{}); res != nil {
 		t.Errorf("expected nil, got %v", res)
 	}
-
 	if res := new(App).SetAttributes([]string{testAppName, testRedirectURI, "no_duration"}); res != nil {
 		t.Errorf("expected nil, got %v", res)
 	}
@@ -71,6 +70,20 @@ func TestAttributesSetAttributesApp(t *testing.T) {
 		Name:            testAppName,
 		RedirectURI:     testRedirectURI,
 		SessionDuration: testSessionDuration,
+	}
+	var nilApp *App
+	nilData := nilApp.SetAttributes(app.Attributes())
+	if nilData == nil {
+		t.Fatalf("error decoding app data")
+	}
+	if nilData.Name != testAppName {
+		t.Errorf("expected app name %q, got %q", testAppName, nilData.Name)
+	}
+	if nilData.RedirectURI != testRedirectURI {
+		t.Errorf("expected redirect URI %q, got %q", testRedirectURI, nilData.RedirectURI)
+	}
+	if nilData.SessionDuration != testSessionDuration {
+		t.Errorf("expected session duration %v, got %v", testSessionDuration, nilData.SessionDuration)
 	}
 	data := new(App).SetAttributes(app.Attributes())
 	if data == nil {

@@ -33,6 +33,10 @@ func TestTimeSetTimeExpiration(t *testing.T) {
 	if expected.Sub(expTime) > time.Millisecond*300 {
 		t.Errorf("expected %v, got %v", expected, expTime)
 	}
+	invalidTime := time.Now().Add(-time.Second)
+	if exp := new(Expiration).SetTime(invalidTime); exp != nil {
+		t.Errorf("expected nil, got %v", exp)
+	}
 }
 
 func TestDurationSetDurationExpiration(t *testing.T) {
@@ -67,8 +71,18 @@ func TestStringSetStringExpiration(t *testing.T) {
 		t.Errorf("expected empty string, got %v", exp)
 	}
 	var nilExp *Expiration
-	if exp := nilExp.String(); exp != "" {
-		t.Errorf("expected empty string, got %v", exp)
+	if nilExp.String() != "" {
+		t.Errorf("expected empty string, got %v", nilExp.String())
+	}
+	if nilExp = nilExp.SetString(str); nilExp == nil {
+		t.Fatalf("expected valid expiration, got nil")
+	}
+	if nilExp.String() != str {
+		t.Errorf("expected %v, got %v", str, nilExp.String())
+	}
+	invalidTime := time.Now().Add(-time.Second).Format(time.RFC3339Nano)
+	if exp := new(Expiration).SetString(invalidTime); exp != nil {
+		t.Errorf("expected nil, got %v", exp)
 	}
 }
 
