@@ -137,6 +137,74 @@ func TestRequestTokenAndStatusHandler(t *testing.T) {
 		SessionDuration: testAppSessionDuration,
 	}
 	testAppID := testApp.ID()
+	testCaseAPIHandler[TokenRequest, any]{
+		name:     "no appID request",
+		method:   http.MethodPost,
+		endpoint: TokensPath,
+		header: http.Header{
+			AppSecretHeader: []string{testAppSecret},
+		},
+		request: &TokenRequest{
+			Email: testUserEmail,
+		},
+		response: nil,
+		err:      InvalidAppHeadersErr,
+	}.Run(t, false)
+	testCaseAPIHandler[TokenRequest, any]{
+		name:     "invalid app id request",
+		method:   http.MethodPost,
+		endpoint: TokensPath,
+		header: http.Header{
+			AppIDHeader:     []string{"invalid"},
+			AppSecretHeader: []string{testAppSecret},
+		},
+		request: &TokenRequest{
+			Email: testUserEmail,
+		},
+		response: nil,
+		err:      InvalidAppIDErr,
+	}.Run(t, false)
+	testCaseAPIHandler[TokenRequest, any]{
+		name:     "no app secret request",
+		method:   http.MethodPost,
+		endpoint: TokensPath,
+		header: http.Header{
+			AppIDHeader: []string{testAppID.String()},
+		},
+		request: &TokenRequest{
+			Email: testUserEmail,
+		},
+		response: nil,
+		err:      InvalidAppHeadersErr,
+	}.Run(t, false)
+	testCaseAPIHandler[TokenRequest, any]{
+		name:     "no email provided",
+		method:   http.MethodPost,
+		endpoint: TokensPath,
+		header: http.Header{
+			AppIDHeader:     []string{testAppID.String()},
+			AppSecretHeader: []string{testAppSecret},
+		},
+		request: &TokenRequest{
+			Email: "",
+		},
+		response: nil,
+		err:      GenerateTokenErr,
+	}.Run(t, false)
+	invalid := []byte("invalid")
+	testCaseAPIHandler[[]byte, any]{
+		name:     "no request",
+		method:   http.MethodPost,
+		endpoint: TokensPath,
+		header: http.Header{
+			AppIDHeader:     []string{testAppID.String()},
+			AppSecretHeader: []string{testAppSecret},
+		},
+		request:  &invalid,
+		response: nil,
+		err:      DecodeTokenRequestErr,
+	}.Run(t, false)
+
 	login.Template = email.EmailTemplate{
 		HTML:  "",
 		Plain: `\[{{.Token}}]`,

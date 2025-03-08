@@ -25,6 +25,10 @@ type AppIDResponse struct {
 	ID string `json:"id"`
 }
 
+type TokenRequest struct {
+	Email string `json:"email"`
+}
+
 type TokenStatusRequest struct {
 	Token string `json:"token"`
 	Email string `json:"email"`

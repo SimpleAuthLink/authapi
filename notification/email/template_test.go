@@ -97,7 +97,6 @@ func TestCompose(t *testing.T) {
 	if onlyHTMLEmail.PlainBody != nil {
 		t.Fatalf("expected nil, got %v", string(onlyHTMLEmail.PlainBody))
 	}
-
 }
 
 func Test_composePlain(t *testing.T) {

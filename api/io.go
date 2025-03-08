@@ -37,10 +37,6 @@ func (r *Response[T]) Write(w http.ResponseWriter) error {
 	return err
 }
 
-type TokenRequest struct {
-	Email string `json:"email"`
-}
-
 type Request[T any] struct {
 	Data T
 }
