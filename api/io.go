@@ -49,6 +49,9 @@ func (req *Request[T]) Read(r *http.Request) error {
 	if req == nil {
 		req = new(Request[T])
 	}
+	if r.Body == nil {
+		return fmt.Errorf("nil request body")
+	}
 	rawBody, err := io.ReadAll(r.Body)
 	if err != nil {
 		return err
