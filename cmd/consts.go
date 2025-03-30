@@ -24,11 +24,11 @@ const (
 	EmailPortFlagDesc = "email server port"
 	SecretFlagDesc    = "secret used to generate the tokens"
 
-	HostEnv      = "SIMPLEAUTH_HOST"
-	PortEnv      = "SIMPLEAUTH_PORT"
-	EmailAddrEnv = "SIMPLEAUTH_EMAIL_ADDR"
-	EmailPassEnv = "SIMPLEAUTH_EMAIL_PASS"
-	EmailHostEnv = "SIMPLEAUTH_EMAIL_HOST"
-	EmailPortEnv = "SIMPLEAUTH_EMAIL_PORT"
-	SecretEnv    = "SIMPLEAUTH_SECRET"
+	HostEnv      = "HOST"
+	PortEnv      = "PORT"
+	EmailAddrEnv = "EMAIL_ADDR"
+	EmailPassEnv = "EMAIL_PASS"
+	EmailHostEnv = "EMAIL_HOST"
+	EmailPortEnv = "EMAIL_PORT"
+	SecretEnv    = "SECRET"
 )
