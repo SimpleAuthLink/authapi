@@ -9,6 +9,13 @@ import (
 	"github.com/simpleauthlink/authapi/token"
 )
 
+// generateAppIDHandler handles the request to generate an app id it decodes
+// the app data from the request body and returns the app id in the response
+// body. Every app data information is required to generate the app id. The
+// app id is a self-contained representation of the app that can be used to
+// generate tokens. It is created by encoding the app as a base64-encoded
+// byte slice resulting in concatenating the app name, redirect uri, and
+// session duration.
 func (s *Service) generateAppIDHandler(w http.ResponseWriter, r *http.Request) {
 	// decode the app data from the request body
 	req := new(Request[AppIDRequest])
@@ -17,13 +24,15 @@ func (s *Service) generateAppIDHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// create the app from the data and check if it is valid
-	app := req.Data.parseApp()
-	if !app.Valid() {
+	app, appSecret := req.Data.parseApp()
+	secret := new(token.Secret).SetParts([]byte(s.cfg.Secret), []byte(appSecret))
+	app.SetSecret(secret)
+	if !app.Valid(secret.Hash()) {
 		InvalidAppIDErr.Write(w)
 		return
 	}
 	// return the app id
-	ResponseWith(&AppIDResponse{app.ID().String()}).WriteJSON(w)
+	ResponseWith(&AppIDResponse{app.ID(secret).String()}).WriteJSON(w)
 }
 
 func (s *Service) requestTokenHandler(w http.ResponseWriter, r *http.Request) {
@@ -36,8 +45,14 @@ func (s *Service) requestTokenHandler(w http.ResponseWriter, r *http.Request) {
 	// decode the app id get the app from it
 	appID := new(token.AppID).SetString(strAppID)
 	app := new(token.App).SetID(appID)
+	// compose the app secret with both parts
+	secret := new(token.Secret).SetParts([]byte(s.cfg.Secret), []byte(strAppSecret))
+	if !secret.Valid() {
+		InvalidAppSecretErr.Write(w)
+		return
+	}
 	// check if the app id is valid (it should be a valid app)
-	if !app.Valid() {
+	if !app.Valid(secret.Hash()) {
 		InvalidAppIDErr.Write(w)
 		return
 	}
@@ -48,11 +63,6 @@ func (s *Service) requestTokenHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// generate user token
-	secret := new(token.Secret).SetParts([]byte(s.cfg.Secret), []byte(strAppSecret))
-	if !secret.Valid() {
-		InvalidAppSecretErr.Write(w)
-		return
-	}
 	token := appID.GenerateToken(*secret, req.Data.Email)
 	if token == nil {
 		GenerateTokenErr.With(req.Data.Email).Write(w)
@@ -91,8 +101,14 @@ func (s *Service) verifyTokenHandler(w http.ResponseWriter, r *http.Request) {
 	// decode the app id get the app from it
 	appID := new(token.AppID).SetString(strAppID)
 	app := new(token.App).SetID(appID)
+	// compose the app secret with both parts
+	secret := new(token.Secret).SetParts([]byte(s.cfg.Secret), []byte(strAppSecret))
+	if !secret.Valid() {
+		InvalidAppSecretErr.Write(w)
+		return
+	}
 	// check if the app id is valid (it should be a valid app)
-	if !app.Valid() {
+	if !app.Valid(secret.Hash()) {
 		InvalidAppIDErr.Write(w)
 		return
 	}
@@ -105,14 +121,8 @@ func (s *Service) verifyTokenHandler(w http.ResponseWriter, r *http.Request) {
 	// check if the token is valid
 	tkn := new(token.Token).SetString(req.Data.Token)
 	exp := tkn.Expiration().Time()
-	secret := new(token.Secret).SetParts([]byte(s.cfg.Secret), []byte(strAppSecret))
-	if !secret.Valid() {
-		InvalidAppSecretErr.Write(w)
-		return
-	}
-	ok := appID.VerifyToken(*tkn, *secret, req.Data.Email)
 	ResponseWith(&TokenStatusResponse{
-		Valid:      ok,
+		Valid:      appID.VerifyToken(*tkn, *secret, req.Data.Email),
 		Expiration: exp,
 	}).WriteJSON(w)
 }

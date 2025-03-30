@@ -6,8 +6,8 @@ import (
 )
 
 const (
-	AppIDHeader     = "APP_ID"
-	AppSecretHeader = "APP_SECRET"
+	AppIDHeader     = "AppID"
+	AppSecretHeader = "AppSecret"
 )
 
 func appConfigFromRequest(r *http.Request) (string, string, error) {

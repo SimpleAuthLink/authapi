@@ -1,7 +1,9 @@
 package token
 
 import (
+	"bytes"
 	"encoding/base64"
+	"encoding/hex"
 	"strings"
 	"time"
 )
@@ -12,13 +14,14 @@ type App struct {
 	Name            string
 	RedirectURI     string
 	SessionDuration time.Duration
+	AppSecretHash   []byte
 }
 
 // Valid method returns true if the app is valid, false otherwise. An app is
 // considered valid if its name is between 3 and 20 characters, its redirect
 // URI is a valid URI, and its session duration is between 5 minutes and 24
 // hours.
-func (app *App) Valid() bool {
+func (app *App) Valid(secretHash []byte) bool {
 	if app == nil {
 		return false
 	}
@@ -34,20 +37,23 @@ func (app *App) Valid() bool {
 	if app.SessionDuration < minDuration || app.SessionDuration > maxDuration {
 		return false
 	}
+	if secretHash != nil {
+		return bytes.Equal(app.AppSecretHash, secretHash)
+	}
 	return true
 }
 
 // Attributes method returns the app's attributes as a slice of strings. This
 // is useful for encoding the app.
 func (app *App) Attributes() []string {
-	return []string{app.Name, app.RedirectURI, app.SessionDuration.String()}
+	return []string{app.Name, app.RedirectURI, app.SessionDuration.String(), hex.EncodeToString(app.AppSecretHash)}
 }
 
 // SetAttributes method sets the app's attributes from a slice of strings. This
 // is useful for decoding the app.
 func (app *App) SetAttributes(attrs []string) *App {
 	// check if the slice has the correct number of attributes
-	if len(attrs) != 3 {
+	if len(attrs) != 4 {
 		return nil
 	}
 	// parse the session duration
@@ -63,8 +69,16 @@ func (app *App) SetAttributes(attrs []string) *App {
 	app.Name = attrs[0]
 	app.RedirectURI = attrs[1]
 	app.SessionDuration = duration
+	appSecretHash, err := hex.DecodeString(attrs[3])
+	if err != nil {
+		return nil
+	}
+	if len(appSecretHash) != 12 {
+		return nil
+	}
+	app.AppSecretHash = appSecretHash[:12]
 	// check if the app is valid and return it if it is
-	if !app.Valid() {
+	if !app.Valid(nil) {
 		return nil
 	}
 	return app
@@ -74,7 +88,7 @@ func (app *App) SetAttributes(attrs []string) *App {
 // and encoding the app. The resulting string is the app's attributes joined
 // by the app data separator.
 func (app *App) String() string {
-	if !app.Valid() {
+	if !app.Valid(nil) {
 		return ""
 	}
 	// join the app's attributes with the app data separator
@@ -106,7 +120,7 @@ func (app *App) SetBytes(data []byte) *App {
 // Marshal method returns the app as a base64-encoded byte slice. It is used
 // to be included in the app ID, which makes it self-contained.
 func (app *App) Marshal() []byte {
-	if !app.Valid() {
+	if !app.Valid(nil) {
 		return nil
 	}
 	bApp := app.Bytes()
@@ -129,8 +143,8 @@ func (app *App) Unmarshal(data []byte) *App {
 // representation of the app that can be used to generate tokens. It is
 // created by encoding the app as a base64-encoded byte slice using the
 // Marshal method.
-func (app *App) ID() *AppID {
-	if !app.Valid() {
+func (app *App) ID(secret *Secret) *AppID {
+	if !app.Valid(secret.Hash()) {
 		return nil
 	}
 	return new(AppID).SetBytes(app.Marshal())
@@ -145,4 +159,13 @@ func (app *App) SetID(id *AppID) *App {
 		return nil
 	}
 	return app.Unmarshal(id.Bytes())
+}
+
+func (app *App) SetSecret(secret *Secret) *App {
+	if app == nil {
+		return nil
+	}
+	// set the app secret hash
+	app.AppSecretHash = secret.Hash()
+	return app
 }

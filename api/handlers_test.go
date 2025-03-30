@@ -90,6 +90,8 @@ func TestGenerateAppIDHandler(t *testing.T) {
 		RedirectURI:     testAppRedirectURL,
 		SessionDuration: testAppSessionDuration,
 	}
+	secret := new(token.Secret).SetParts([]byte(testServerSecret), []byte(testAppSecret))
+	testApp.SetSecret(secret)
 	testCaseAPIHandler[AppIDRequest, AppIDResponse]{
 		name:     "valid request",
 		method:   http.MethodPost,
@@ -101,7 +103,7 @@ func TestGenerateAppIDHandler(t *testing.T) {
 			Secret:      testAppSecret,
 		},
 		response: &AppIDResponse{
-			ID: testApp.ID().String(),
+			ID: testApp.ID(secret).String(),
 		},
 	}.Run(t)
 	testCaseAPIHandler[AppIDRequest, AppIDResponse]{
@@ -131,7 +133,9 @@ func TestRequestTokenAndStatusHandler(t *testing.T) {
 		RedirectURI:     testAppRedirectURL,
 		SessionDuration: testAppSessionDuration,
 	}
-	testAppID := testApp.ID()
+	secret := new(token.Secret).SetParts([]byte(testServerSecret), []byte(testAppSecret))
+	testApp.SetSecret(secret)
+	testAppID := testApp.ID(secret)
 	testCaseAPIHandler[TokenRequest, any]{
 		name:     "no appID request",
 		method:   http.MethodPost,

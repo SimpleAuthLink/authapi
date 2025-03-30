@@ -13,15 +13,16 @@ type AppIDRequest struct {
 	Secret      string `json:"secret"`
 }
 
-func (data *AppIDRequest) parseApp() *token.App {
+func (data *AppIDRequest) parseApp() (*token.App, string) {
 	if duration, err := time.ParseDuration(data.Duration); err == nil {
-		return &token.App{
+		app := &token.App{
 			Name:            data.Name,
 			RedirectURI:     data.RedirectURL,
 			SessionDuration: duration,
 		}
+		return app, data.Secret
 	}
-	return new(token.App)
+	return new(token.App), ""
 }
 
 type AppIDResponse struct {

@@ -20,36 +20,36 @@ func TestValidApp(t *testing.T) {
 		RedirectURI:     testRedirectURI,
 		SessionDuration: testSessionDuration,
 	}
-	if !app.Valid() {
+	if !app.Valid(nil) {
 		t.Errorf("expected valid app data")
 	}
 	// test app name
 	app.Name = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
-	if app.Valid() {
+	if app.Valid(nil) {
 		t.Errorf("expected invalid app data")
 	}
 	app.Name = "no"
-	if app.Valid() {
+	if app.Valid(nil) {
 		t.Errorf("expected invalid app data")
 	}
 	app.Name = testAppName
 	// test redirect URI
 	app.RedirectURI = "https://example.com/login?app=lorem_ipsum_dolor_sit_amet_consectetur_adipiscing_elit_sed_do_eiusmod_tempor_incididunt_ut_labore_et_dolore_magna_aliqua"
-	if app.Valid() {
+	if app.Valid(nil) {
 		t.Errorf("expected invalid app data")
 	}
 	app.RedirectURI = "no_url"
-	if app.Valid() {
+	if app.Valid(nil) {
 		t.Errorf("expected invalid app data")
 	}
 	app.RedirectURI = testRedirectURI
 	// test session duration
 	app.SessionDuration = minDuration - 1
-	if app.Valid() {
+	if app.Valid(nil) {
 		t.Errorf("expected invalid app data")
 	}
 	app.SessionDuration = maxDuration + 1
-	if app.Valid() {
+	if app.Valid(nil) {
 		t.Errorf("expected invalid app data")
 	}
 }
@@ -71,6 +71,10 @@ func TestAttributesSetAttributesApp(t *testing.T) {
 		RedirectURI:     testRedirectURI,
 		SessionDuration: testSessionDuration,
 	}
+	servicePart := []byte("service-secret")
+	appPart := []byte("app-secret")
+	secret := new(Secret).SetParts(servicePart, appPart)
+	app.SetSecret(secret)
 	var nilApp *App
 	nilData := nilApp.SetAttributes(app.Attributes())
 	if nilData == nil {
@@ -109,6 +113,10 @@ func TestStringSetStringApp(t *testing.T) {
 		RedirectURI:     testRedirectURI,
 		SessionDuration: testSessionDuration,
 	}
+	servicePart := []byte("service-secret")
+	appPart := []byte("app-secret")
+	secret := new(Secret).SetParts(servicePart, appPart)
+	app.SetSecret(secret)
 	data := new(App).SetString(app.String())
 	if data == nil {
 		t.Fatalf("error decoding app data")
@@ -130,6 +138,10 @@ func TestBytesSetBytesApp(t *testing.T) {
 		RedirectURI:     testRedirectURI,
 		SessionDuration: testSessionDuration,
 	}
+	servicePart := []byte("service-secret")
+	appPart := []byte("app-secret")
+	secret := new(Secret).SetParts(servicePart, appPart)
+	app.SetSecret(secret)
 	data := new(App).SetBytes(app.Bytes())
 	if data == nil {
 		t.Fatalf("error decoding app data")
@@ -157,6 +169,10 @@ func TestMarshalUnmarshalApp(t *testing.T) {
 		RedirectURI:     testRedirectURI,
 		SessionDuration: testSessionDuration,
 	}
+	servicePart := []byte("service-secret")
+	appPart := []byte("app-secret")
+	secret := new(Secret).SetParts(servicePart, appPart)
+	app.SetSecret(secret)
 	data := new(App).Unmarshal(app.Marshal())
 	if data == nil {
 		t.Fatalf("error decoding app data")
@@ -173,7 +189,10 @@ func TestMarshalUnmarshalApp(t *testing.T) {
 }
 
 func TestAppID(t *testing.T) {
-	if id := new(App).ID(); id != nil {
+	servicePart := []byte("service-secret")
+	appPart := []byte("app-secret")
+	secret := new(Secret).SetParts(servicePart, appPart)
+	if id := new(App).ID(secret); id != nil {
 		t.Errorf("expected nil, got %v", id)
 	}
 	app := &App{
@@ -181,7 +200,8 @@ func TestAppID(t *testing.T) {
 		RedirectURI:     testRedirectURI,
 		SessionDuration: testSessionDuration,
 	}
-	id := app.ID()
+	app.SetSecret(secret)
+	id := app.ID(secret)
 	if id == nil {
 		t.Fatalf("error decoding app ID")
 	}

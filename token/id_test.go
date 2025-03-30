@@ -17,7 +17,11 @@ func TestStringSetStringAppID(t *testing.T) {
 		RedirectURI:     testRedirectURI,
 		SessionDuration: testSessionDuration,
 	}
-	id := app.ID()
+	servicePart := []byte("service-secret")
+	appPart := []byte("app-secret")
+	secret := new(Secret).SetParts(servicePart, appPart)
+	app.SetSecret(secret)
+	id := app.ID(secret)
 	if id == nil {
 		t.Fatalf("error decoding app ID")
 	}
@@ -39,7 +43,11 @@ func TestBytesSetBytesAppID(t *testing.T) {
 		RedirectURI:     testRedirectURI,
 		SessionDuration: testSessionDuration,
 	}
-	id := app.ID()
+	servicePart := []byte("service-secret")
+	appPart := []byte("app-secret")
+	secret := new(Secret).SetParts(servicePart, appPart)
+	app.SetSecret(secret)
+	id := app.ID(secret)
 	if id == nil {
 		t.Fatalf("error decoding app ID")
 	}
@@ -92,7 +100,11 @@ func TestPrivKeySignVerifyAppID(t *testing.T) {
 		RedirectURI:     testRedirectURI,
 		SessionDuration: testSessionDuration,
 	}
-	id := app.ID()
+	servicePart := []byte("service-secret")
+	appPart := []byte("app-secret")
+	secret := new(Secret).SetParts(servicePart, appPart)
+	app.SetSecret(secret)
+	id := app.ID(secret)
 	if id == nil {
 		t.Fatalf("error decoding app ID")
 	}
@@ -135,7 +147,11 @@ func TestGenerateTokenVerifyToken(t *testing.T) {
 		RedirectURI:     testRedirectURI,
 		SessionDuration: minDuration,
 	}
-	id := app.ID()
+	servicePart := []byte("service-secret")
+	appPart := []byte("app-secret")
+	secret := new(Secret).SetParts(servicePart, appPart)
+	app.SetSecret(secret)
+	id := app.ID(secret)
 	if id == nil {
 		t.Fatalf("error decoding app ID")
 	}

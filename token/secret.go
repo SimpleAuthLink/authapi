@@ -38,6 +38,15 @@ func (s *Secret) Bytes() []byte {
 	return []byte(*s)
 }
 
+func (s *Secret) Hash() []byte {
+	if s == nil {
+		return nil
+	}
+	// hash the secret to a sha256 size
+	h := sha256.Sum256(*s)
+	return h[:12]
+}
+
 // Valid method returns true if the secret is valid, false otherwise. A secret
 // is considered valid if it has more than 1 part, and each part is hashed to
 // a sha256 size.
@@ -47,5 +56,5 @@ func (s *Secret) Valid() bool {
 	}
 	// secret is valid if it has more than 1 part, and each part is hashed
 	// to a sha256 size
-	return len(*s) > sha256.Size
+	return len(*s)%sha256.Size == 0 && len(*s) > sha256.Size
 }

@@ -30,6 +30,9 @@ func (id *AppID) SetString(data string) *AppID {
 
 // Bytes method returns the application ID as a byte slice.
 func (id *AppID) Bytes() []byte {
+	if id == nil {
+		return nil
+	}
 	return []byte(*id)
 }
 
@@ -41,7 +44,7 @@ func (id *AppID) Bytes() []byte {
 // valid, the application ID is not set and nil is returned.
 func (id *AppID) SetBytes(data []byte) *AppID {
 	// check if the application ID is valid
-	if !new(App).Unmarshal(data).Valid() {
+	if !new(App).Unmarshal(data).Valid(nil) {
 		return nil
 	}
 	// if no application ID is provided, create a new one
