@@ -40,14 +40,15 @@ type Service struct {
 
 func New(ctx context.Context, cfg *Config, nq notification.Queue) (*Service, error) {
 	internalCtx, cancel := context.WithCancel(ctx)
-	rateLimiter := apihandler.RateLimiter(internalCtx, 1000, 1000, time.Minute*3)
+	// rateLimiter := apihandler.RateLimiter(internalCtx, 1000, 1000, time.Minute*3)
 	// create the service
 	srv := &Service{
-		ctx:     internalCtx,
-		cancel:  cancel,
-		cfg:     cfg,
-		nq:      nq,
-		handler: apihandler.NewHandler(true, rateLimiter),
+		ctx:    internalCtx,
+		cancel: cancel,
+		cfg:    cfg,
+		nq:     nq,
+		// handler: apihandler.NewHandler(true, rateLimiter),
+		handler: apihandler.NewHandler(true, nil),
 	}
 	// demo stuff
 	if cfg.DemoMode {
