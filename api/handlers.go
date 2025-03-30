@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/simpleauthlink/authapi/notification"
@@ -114,4 +115,43 @@ func (s *Service) verifyTokenHandler(w http.ResponseWriter, r *http.Request) {
 		Valid:      ok,
 		Expiration: exp,
 	}).WriteJSON(w)
+}
+
+func (s *Service) healthCheckHandler(w http.ResponseWriter, r *http.Request) {
+	OkResponse().Write(w)
+}
+
+func (s *Service) demoInboxHandler(w http.ResponseWriter, r *http.Request) {
+	// get the email from get parameters
+	email := r.URL.Query().Get("email")
+	if email == "" {
+		InvalidDemoEmailInboxErr.Write(w)
+		return
+	}
+	// set http headers required for SSE
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	// create a channel for client disconnection
+	clientGone := r.Context().Done()
+	// create a response controller
+	rc := http.NewResponseController(w)
+	for {
+		select {
+		case <-s.ctx.Done():
+		case <-clientGone:
+			return
+		case msg := <-s.demoMailInbox:
+			// find the token in the email
+			if testToken := login.FindToken(email, msg); testToken != nil {
+				// send an event to the client with the token in the "data" field
+				if _, err := fmt.Fprintf(w, "data: %s\n\n", testToken); err != nil {
+					return
+				}
+				if err := rc.Flush(); err != nil {
+					return
+				}
+			}
+		}
+	}
 }

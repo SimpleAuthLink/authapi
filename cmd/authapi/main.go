@@ -2,47 +2,13 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"log"
-	"os"
-	"strconv"
 
 	"github.com/simpleauthlink/authapi/api"
+	"github.com/simpleauthlink/authapi/cmd"
+	"github.com/simpleauthlink/authapi/internal/osflag"
 	"github.com/simpleauthlink/authapi/notification/email"
-)
-
-const (
-	defaultHost      = "0.0.0.0"
-	defaultPort      = 8080
-	defaultEmailAddr = ""
-	defaultEmailPass = ""
-	defaultEmailHost = ""
-	defaultEmailPort = 587
-	defaultSecret    = "simpleauthlink-secret"
-
-	hostFlag          = "host"
-	portFlag          = "port"
-	emailAddrFlag     = "email-addr"
-	emailPassFlag     = "email-pass"
-	emailHostFlag     = "email-host"
-	emailPortFlag     = "email-port"
-	secretFlag        = "secret"
-	hostFlagDesc      = "service host"
-	portFlagDesc      = "service port"
-	emailAddrFlagDesc = "email account address"
-	emailPassFlagDesc = "email account password"
-	emailHostFlagDesc = "email server host"
-	emailPortFlagDesc = "email server port"
-	secretFlagDesc    = "secret used to generate the tokens"
-
-	hostEnv      = "SIMPLEAUTH_HOST"
-	portEnv      = "SIMPLEAUTH_PORT"
-	emailAddrEnv = "SIMPLEAUTH_EMAIL_ADDR"
-	emailPassEnv = "SIMPLEAUTH_EMAIL_PASS"
-	emailHostEnv = "SIMPLEAUTH_EMAIL_HOST"
-	emailPortEnv = "SIMPLEAUTH_EMAIL_PORT"
-	secretEnv    = "SIMPLEAUTH_SECRET"
 )
 
 type config struct {
@@ -55,12 +21,30 @@ type config struct {
 	secret    string
 }
 
+func (c *config) String() string {
+	return fmt.Sprintf(`{"server": "%s:%d", "smtpServer": "%s:%d", "smtpAuth": "%s:%s", "secret": "%s"}`,
+		c.host, c.port, c.emailHost, c.emailPort, c.emailAddr, c.emailPass, c.secret)
+}
+
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	c, err := parseConfig()
-	if err != nil {
-		log.Fatalln("ERR: error parsing config:", err)
+	c := new(config)
+	// get config from flags
+	osflag.StringVar(&c.host, cmd.HostEnv, cmd.HostFlag, cmd.DefaultHost, cmd.HostFlagDesc, false)
+	osflag.IntVar(&c.port, cmd.PortEnv, cmd.PortFlag, cmd.DefaultPort, cmd.HostFlagDesc, false)
+	osflag.StringVar(&c.emailAddr, cmd.EmailAddrEnv, cmd.EmailAddrFlag, cmd.DefaultEmailAddr, cmd.EmailAddrFlagDesc, true)
+	osflag.StringVar(&c.emailPass, cmd.EmailPassEnv, cmd.EmailPassFlag, cmd.DefaultEmailPass, cmd.EmailPassFlagDesc, true)
+	osflag.StringVar(&c.emailHost, cmd.EmailHostEnv, cmd.EmailHostFlag, cmd.DefaultEmailHost, cmd.EmailHostFlagDesc, true)
+	osflag.IntVar(&c.emailPort, cmd.EmailPortEnv, cmd.EmailPortFlag, cmd.DefaultEmailPort, cmd.EmailPortFlagDesc, false)
+	osflag.StringVar(&c.secret, cmd.SecretEnv, cmd.SecretFlag, cmd.DefaultSecret, cmd.SecretFlagDesc, true)
+	if err := osflag.Parse(); err != nil {
+		log.Fatalln("ERR: error parsing flags:", err)
 	}
+	if !osflag.Parsed() {
+		log.Fatalln("ERR: error parsing flags:", "flags not parsed")
+		osflag.PrintDefaults()
+	}
+	log.Println("INF: starting service with config:", c.String())
 	// create email queue
 	emailQueue, err := email.NewEmailQueue(context.Background(), &email.EmailConfig{
 		FromName:     "SimpleAuthLink",
@@ -85,84 +69,14 @@ func main() {
 	if err != nil {
 		log.Fatalln("ERR: error creating service:", err)
 	}
+	// start the service in background
 	go func() {
 		if err := service.Start(); err != nil {
 			log.Fatalln("ERR: error running service:", err)
 		}
 	}()
 	// wait for the service to finish
-	service.WaitToShutdown()
-}
-
-func parseConfig() (*config, error) {
-	var fhost, femailAddr, femailPass, femailHost, fsecret string
-	var fport, femailPort int
-	// get config from flags
-	flag.StringVar(&fhost, hostFlag, defaultHost, hostFlagDesc)
-	flag.IntVar(&fport, portFlag, defaultPort, hostFlagDesc)
-	flag.StringVar(&femailAddr, emailAddrFlag, defaultEmailAddr, emailAddrFlagDesc)
-	flag.StringVar(&femailPass, emailPassFlag, defaultEmailPass, emailPassFlagDesc)
-	flag.StringVar(&femailHost, emailHostFlag, defaultEmailHost, emailHostFlagDesc)
-	flag.IntVar(&femailPort, emailPortFlag, defaultEmailPort, emailPortFlagDesc)
-	flag.StringVar(&fsecret, secretFlag, defaultSecret, secretFlagDesc)
-	flag.Parse()
-	// get config from env
-	envHost := os.Getenv(hostEnv)
-	envPort := os.Getenv(portEnv)
-	envEmailAddr := os.Getenv(emailAddrEnv)
-	envEmailPass := os.Getenv(emailPassEnv)
-	envEmailHost := os.Getenv(emailHostEnv)
-	envEmailPort := os.Getenv(emailPortEnv)
-	envSecret := os.Getenv(secretEnv)
-	// check if the required flags are set
-	if femailAddr == "" && envEmailAddr == "" {
-		return nil, fmt.Errorf("email address is required, use -%s or set %s env var", emailAddrFlag, emailAddrEnv)
+	if err := service.WaitToShutdown(); err != nil {
+		log.Fatalln("ERR: error waiting for service to finish:", err)
 	}
-	if femailPass == "" && envEmailPass == "" {
-		return nil, fmt.Errorf("email password is required, use -%s or set %s env var", emailPassFlag, emailPassEnv)
-	}
-	if femailHost == "" && envEmailHost == "" {
-		return nil, fmt.Errorf("email host is required, use -%s or set %s env var", emailHostFlag, emailHostEnv)
-	}
-	if fsecret == "" && envSecret == "" {
-		return nil, fmt.Errorf("secret is required, use -%s or set %s env var", secretFlag, secretEnv)
-	}
-	// set flags values by default
-	c := &config{
-		host:      fhost,
-		port:      fport,
-		emailAddr: femailAddr,
-		emailPass: femailPass,
-		emailHost: femailHost,
-		emailPort: femailPort,
-		secret:    fsecret,
-	}
-	// if some flags are not set, set them by env
-	if envHost != "" {
-		c.host = envHost
-	}
-	if envPort != "" {
-		if nenvPort, err := strconv.Atoi(envPort); err == nil {
-			c.port = nenvPort
-		} else {
-			return nil, fmt.Errorf("invalid port value: %s", envPort)
-		}
-	}
-	if envEmailAddr != "" {
-		c.emailAddr = envEmailAddr
-	}
-	if envEmailPass != "" {
-		c.emailPass = envEmailPass
-	}
-	if envEmailHost != "" {
-		c.emailHost = envEmailHost
-	}
-	if envEmailPort != "" {
-		if nenvEmailPort, err := strconv.Atoi(envEmailPort); err == nil {
-			c.emailPort = nenvEmailPort
-		} else {
-			return nil, fmt.Errorf("invalid email port value: %s", envEmailPort)
-		}
-	}
-	return c, nil
 }

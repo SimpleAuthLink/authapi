@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/lucasmenendez/apihandler"
+	"github.com/simpleauthlink/authapi/internal"
 	"github.com/simpleauthlink/authapi/notification"
 )
 
@@ -18,6 +19,10 @@ type Config struct {
 	Server     string
 	ServerPort int
 	Secret     string
+	// demo stuff
+	DemoMode     bool
+	DemoSMTPAddr string
+	DemoSMTPPort int
 }
 
 type Service struct {
@@ -28,6 +33,9 @@ type Service struct {
 	nq         notification.Queue
 	handler    *apihandler.Handler
 	httpServer *http.Server
+	// demo stuff
+	demoMailServer *internal.FakeSMTPServer
+	demoMailInbox  chan string
 }
 
 func New(ctx context.Context, cfg *Config, nq notification.Queue) (*Service, error) {
@@ -41,13 +49,21 @@ func New(ctx context.Context, cfg *Config, nq notification.Queue) (*Service, err
 		nq:      nq,
 		handler: apihandler.NewHandler(true, rateLimiter),
 	}
+	// demo stuff
+	if cfg.DemoMode {
+		srv.demoMailInbox = make(chan string, 1)
+		srv.demoMailServer = internal.NewFakeSMTPServer(cfg.DemoSMTPAddr,
+			cfg.DemoSMTPPort, srv.demoMailInbox)
+		if err := srv.demoMailServer.Start(internalCtx); err != nil {
+			return nil, err
+		}
+		_ = srv.handler.Get(DemoInboxPath, srv.demoInboxHandler)
+	}
 	// register the routes and handlers
-	srv.handler.Get(HealthCheckPath, func(w http.ResponseWriter, r *http.Request) {
-		OkResponse().WriteJSON(w)
-	})
-	srv.handler.Post(AppsPath, srv.generateAppIDHandler)
-	srv.handler.Post(TokensPath, srv.requestTokenHandler)
-	srv.handler.Put(TokensPath, srv.verifyTokenHandler)
+	_ = srv.handler.Post(AppsPath, srv.generateAppIDHandler)
+	_ = srv.handler.Post(TokensPath, srv.requestTokenHandler)
+	_ = srv.handler.Put(TokensPath, srv.verifyTokenHandler)
+	_ = srv.handler.Get(HealthCheckPath, srv.healthCheckHandler)
 	// build the http server
 	srv.httpServer = &http.Server{
 		Addr:    fmt.Sprintf("%s:%d", cfg.Server, cfg.ServerPort),
@@ -91,7 +107,7 @@ func (s *Service) WaitToShutdown() error {
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	<-done
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	defer s.Stop()
 	return s.httpServer.Shutdown(ctx)

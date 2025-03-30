@@ -6,11 +6,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"regexp"
 	"testing"
 	"time"
 
-	"github.com/simpleauthlink/authapi/notification"
 	"github.com/simpleauthlink/authapi/notification/email"
 	"github.com/simpleauthlink/authapi/notification/templates/login"
 	"github.com/simpleauthlink/authapi/token"
@@ -52,8 +50,8 @@ func (testCase testCaseAPIHandler[Rq, Rs]) Run(t *testing.T) {
 		defer resp.Body.Close()
 		switch {
 		case testCase.err != nil:
-			if resp.StatusCode != testCase.err.StatusCode {
-				t.Fatalf("expected status code: %d, got: %d", testCase.err.StatusCode, resp.StatusCode)
+			if resp.StatusCode != testCase.err.statusCode {
+				t.Fatalf("expected status code: %d, got: %d", testCase.err.statusCode, resp.StatusCode)
 			}
 			err := new(APIError)
 			if err := json.NewDecoder(resp.Body).Decode(err); err != nil {
@@ -99,7 +97,7 @@ func TestGenerateAppIDHandler(t *testing.T) {
 		request: &AppIDRequest{
 			Name:        testApp.Name,
 			RedirectURL: testApp.RedirectURI,
-			Duration:    int64(testApp.SessionDuration),
+			Duration:    testApp.SessionDuration.String(),
 			Secret:      testAppSecret,
 		},
 		response: &AppIDResponse{
@@ -120,7 +118,7 @@ func TestGenerateAppIDHandler(t *testing.T) {
 		request: &AppIDRequest{
 			Name:        testAppName,
 			RedirectURL: testAppRedirectURL,
-			Duration:    int64(time.Second),
+			Duration:    time.Second.String(),
 			Secret:      testAppSecret,
 		},
 		err: InvalidAppIDErr,
@@ -223,25 +221,10 @@ func TestRequestTokenAndStatusHandler(t *testing.T) {
 	var testToken *token.Token
 	select {
 	case receivedMsg := <-inboxChan:
-		data := login.Data{
-			AppName: testAppName,
-			Email:   testUserEmail,
-			Token:   `(.+\..+)`,
-			Link:    testAppRedirectURL + receivedMsg,
-		}
-		notification, err := login.Template.Compose(notification.NotificationParams{
-			To:      testUserEmail,
-			Subject: data.Subject(),
-		}, data)
-		if err != nil {
-			t.Fatalf("could not compose notification: %v", err)
-		}
-		tokenRgx := regexp.MustCompile(string(notification.PlainBody))
-		tokenResult := tokenRgx.FindAllStringSubmatch(receivedMsg, -1)
-		if len(tokenResult) < 1 || len(tokenResult[0]) < 2 {
+		testToken = login.FindToken(testUserEmail, receivedMsg)
+		if testToken == nil {
 			t.Fatal("could not find token in email")
 		}
-		testToken = new(token.Token).SetString(tokenResult[0][1])
 		break
 	case <-time.After(2 * time.Second):
 		t.Fatal("timed out waiting for the email to be received")

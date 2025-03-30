@@ -8,17 +8,20 @@ import (
 
 type AppIDRequest struct {
 	Name        string `json:"name"`
-	Duration    int64  `json:"session_duration"`
+	Duration    string `json:"session_duration"`
 	RedirectURL string `json:"redirect_url"`
 	Secret      string `json:"secret"`
 }
 
 func (data *AppIDRequest) parseApp() *token.App {
-	return &token.App{
-		Name:            data.Name,
-		RedirectURI:     data.RedirectURL,
-		SessionDuration: time.Duration(data.Duration),
+	if duration, err := time.ParseDuration(data.Duration); err == nil {
+		return &token.App{
+			Name:            data.Name,
+			RedirectURI:     data.RedirectURL,
+			SessionDuration: duration,
+		}
 	}
+	return new(token.App)
 }
 
 type AppIDResponse struct {

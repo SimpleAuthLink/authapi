@@ -15,9 +15,10 @@ var (
 	EncodeAppIDResponseErr       = newApiErr(1010, http.StatusInternalServerError).With("could not encode app id response")
 	EncodeTokenStatusResponseErr = newApiErr(1011, http.StatusInternalServerError).With("could not encode token status response")
 	// Bad request errors
-	InvalidAppHeadersErr = newApiErr(1020, http.StatusBadRequest).With("invalid app headers")
-	InvalidAppIDErr      = newApiErr(1021, http.StatusBadRequest).With("invalid app id")
-	InvalidAppSecretErr  = newApiErr(1022, http.StatusBadRequest).With("invalid app secret")
+	InvalidAppHeadersErr     = newApiErr(1020, http.StatusBadRequest).With("invalid app headers")
+	InvalidAppIDErr          = newApiErr(1021, http.StatusBadRequest).With("invalid app id")
+	InvalidAppSecretErr      = newApiErr(1022, http.StatusBadRequest).With("invalid app secret")
+	InvalidDemoEmailInboxErr = newApiErr(1023, http.StatusBadRequest).With("invalid demo email inbox")
 	// Internal errors
 	GenerateTokenErr = newApiErr(1030, http.StatusInternalServerError).With("could not generate token")
 	GenerateEmailErr = newApiErr(1031, http.StatusInternalServerError).With("could not generate email")
@@ -28,8 +29,8 @@ var (
 type APIError struct {
 	Code       int    `json:"code"`
 	Message    string `json:"message"`
-	Err        string `json:"error"`
-	StatusCode int    `json:"status_code"`
+	Err        string `json:"error,omitempty"`
+	statusCode int
 }
 
 func (e *APIError) Bytes() []byte {
@@ -41,7 +42,7 @@ func (e *APIError) Bytes() []byte {
 }
 
 func (e *APIError) Error() string {
-	return fmt.Sprintf("code: %d, message: %s, error: %s, status_code: %d", e.Code, e.Message, e.Err, e.StatusCode)
+	return fmt.Sprintf("code: %d, message: %s, error: %s, status_code: %d", e.Code, e.Message, e.Err, e.statusCode)
 }
 
 func (e *APIError) WithErr(err error) *APIError {
@@ -64,7 +65,7 @@ func (e *APIError) With(msg string) *APIError {
 
 func (e *APIError) Write(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(e.StatusCode)
+	w.WriteHeader(e.statusCode)
 	if _, err := w.Write(e.Bytes()); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -73,6 +74,6 @@ func (e *APIError) Write(w http.ResponseWriter) {
 func newApiErr(code, status int) *APIError {
 	return &APIError{
 		Code:       code,
-		StatusCode: status,
+		statusCode: status,
 	}
 }
