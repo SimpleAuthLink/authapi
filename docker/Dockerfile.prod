@@ -10,6 +10,8 @@ RUN go build -o /authapi ./cmd/authapi/main.go
 # deploy
 FROM alpine:latest
 
+EXPOSE 80
+
 WORKDIR /
 COPY --from=builder /authapi /authapi
 
