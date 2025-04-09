@@ -2,6 +2,12 @@ package token
 
 import "crypto/sha256"
 
+// secretHashSize is the size of the secret hash. It is used to determine
+// the size of the secret when it is hashed. The hash is created by hashing
+// the secret to a sha256 size. The hash is used to sign and verify tokens.
+// The hash is also used to create the app ID and it is part of it.
+const secretHashSize = 12
+
 // Secret represents a secret that is used to sign and verify tokens. It is
 // a wrapper around a byte slice that provides additional methods for setting
 // and getting the secret. It should have at least 2 parts, each hashed to a
@@ -38,13 +44,17 @@ func (s *Secret) Bytes() []byte {
 	return []byte(*s)
 }
 
+// Hash method returns the hash of the secret as a byte slice. The hash is
+// created by hashing the secret to a sha256 size. The hash is used to create
+// the app ID and it is part of it, but is also used to sign and verify the
+// user sessions in the token generation process.
 func (s *Secret) Hash() []byte {
 	if s == nil {
 		return nil
 	}
 	// hash the secret to a sha256 size
 	h := sha256.Sum256(*s)
-	return h[:12]
+	return h[:secretHashSize]
 }
 
 // Valid method returns true if the secret is valid, false otherwise. A secret

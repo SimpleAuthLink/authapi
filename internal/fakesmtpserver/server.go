@@ -1,4 +1,4 @@
-package internal
+package fakesmtpserver
 
 import (
 	"bufio"
@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"sync"
 )
 
 // FakeSMTPServer represents a simple SMTP testing server.
@@ -13,19 +14,25 @@ type FakeSMTPServer struct {
 	addr     string
 	inbox    chan string
 	listener net.Listener
+	mu       sync.Mutex // Mutex to protect listener
 }
 
-// NewFakeSMTPServer creates a new FakeSMTPServer instance that listens on the
-// given address and port and stores the received emails in the inbox channel
+// NewServer creates a new FakeSMTPServer instance that listens on the given
+// address and port and stores the received emails in the inbox channel
 // provided.
-func NewFakeSMTPServer(addr string, port int, inbox chan string) *FakeSMTPServer {
-	return &FakeSMTPServer{addr: fmt.Sprintf("%s:%d", addr, port), inbox: inbox}
+func NewServer(addr string, port int, inbox chan string) *FakeSMTPServer {
+	return &FakeSMTPServer{
+		addr:  fmt.Sprintf("%s:%d", addr, port),
+		inbox: inbox,
+	}
 }
 
 // Start method launches the test SMTP server.
 func (s *FakeSMTPServer) Start(ctx context.Context) error {
 	var err error
+	s.mu.Lock()
 	s.listener, err = net.Listen("tcp", s.addr)
+	s.mu.Unlock()
 	if err != nil {
 		return err
 	}
@@ -33,11 +40,18 @@ func (s *FakeSMTPServer) Start(ctx context.Context) error {
 		for {
 			select {
 			case <-ctx.Done():
-				s.listener.Close()
+				s.Stop() // Use Stop to safely close the listener
+				return
 			default:
-				conn, err := s.listener.Accept()
-				if err != nil {
+				s.mu.Lock()
+				listener := s.listener // Copy listener under lock
+				s.mu.Unlock()
+				if listener == nil {
 					return
+				}
+				conn, err := listener.Accept()
+				if err != nil {
+					continue
 				}
 				go s.handleConn(conn)
 			}
@@ -48,7 +62,13 @@ func (s *FakeSMTPServer) Start(ctx context.Context) error {
 
 // Stop method shuts down the test SMTP server.
 func (s *FakeSMTPServer) Stop() {
-	s.listener.Close()
+	s.mu.Lock()
+	listener := s.listener // Copy listener under lock
+	s.listener = nil       // Set listener to nil under lock
+	s.mu.Unlock()
+	if listener != nil {
+		listener.Close() // Close listener outside the lock
+	}
 }
 
 func (s *FakeSMTPServer) handleConn(conn net.Conn) {

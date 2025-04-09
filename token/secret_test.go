@@ -51,3 +51,26 @@ func TestValidSecret(t *testing.T) {
 		t.Errorf("expected true, got false")
 	}
 }
+
+func TestSecretHash(t *testing.T) {
+	servicePart := []byte("service-secret")
+	appPart := []byte("app-secret")
+	secret := new(Secret).SetParts(servicePart, appPart)
+	h := secret.Hash()
+	if h == nil {
+		t.Errorf("expected hash, got nil")
+	}
+	if len(h) != secretHashSize {
+		t.Errorf("expected hash size %d, got %d", secretHashSize, len(h))
+	}
+	hSecret := sha256.Sum256(secret.Bytes())
+	if !bytes.Equal(h, hSecret[:secretHashSize]) {
+		t.Errorf("expected %x, got %x", hSecret[:secretHashSize], h)
+	}
+	// try to hash a nil secret
+	var nilSecret *Secret
+	h = nilSecret.Hash()
+	if h != nil {
+		t.Errorf("expected nil, got %x", h)
+	}
+}

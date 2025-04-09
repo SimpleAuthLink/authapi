@@ -73,10 +73,10 @@ func (app *App) SetAttributes(attrs []string) *App {
 	if err != nil {
 		return nil
 	}
-	if len(appSecretHash) != 12 {
+	if len(appSecretHash) != secretHashSize {
 		return nil
 	}
-	app.AppSecretHash = appSecretHash[:12]
+	app.AppSecretHash = appSecretHash
 	// check if the app is valid and return it if it is
 	if !app.Valid(nil) {
 		return nil
@@ -164,6 +164,9 @@ func (app *App) SetID(id *AppID) *App {
 func (app *App) SetSecret(secret *Secret) *App {
 	if app == nil {
 		return nil
+	}
+	if secret == nil {
+		return app
 	}
 	// set the app secret hash
 	app.AppSecretHash = secret.Hash()

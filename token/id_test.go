@@ -69,6 +69,14 @@ func TestBytesSetBytesAppID(t *testing.T) {
 	if !bytes.Equal(nilID.Bytes(), id.Bytes()) {
 		t.Errorf("expected %v, got %v", id.Bytes(), nilID.Bytes())
 	}
+	// nil app ID
+	if nilID = new(AppID).SetBytes(nil); nilID != nil {
+		t.Errorf("expected nil, got %v", nilID)
+	}
+	var nilAppID *AppID
+	if bNilAppID := nilAppID.Bytes(); bNilAppID != nil {
+		t.Errorf("expected nil, got %v", bNilAppID)
+	}
 }
 
 func TestPrivKeySignVerifyAppID(t *testing.T) {

@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/lucasmenendez/apihandler"
-	"github.com/simpleauthlink/authapi/internal"
+	"github.com/simpleauthlink/authapi/internal/fakesmtpserver"
 	"github.com/simpleauthlink/authapi/notification"
 )
 
@@ -34,7 +34,7 @@ type Service struct {
 	handler    *apihandler.Handler
 	httpServer *http.Server
 	// demo stuff
-	demoMailServer *internal.FakeSMTPServer
+	demoMailServer *fakesmtpserver.FakeSMTPServer
 	demoMailInbox  chan string
 }
 
@@ -53,7 +53,7 @@ func New(ctx context.Context, cfg *Config, nq notification.Queue) (*Service, err
 	// demo stuff
 	if cfg.DemoMode {
 		srv.demoMailInbox = make(chan string, 1)
-		srv.demoMailServer = internal.NewFakeSMTPServer(cfg.DemoSMTPAddr,
+		srv.demoMailServer = fakesmtpserver.NewServer(cfg.DemoSMTPAddr,
 			cfg.DemoSMTPPort, srv.demoMailInbox)
 		if err := srv.demoMailServer.Start(internalCtx); err != nil {
 			return nil, err

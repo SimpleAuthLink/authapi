@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/simpleauthlink/authapi/internal"
+	"github.com/simpleauthlink/authapi/internal/fakesmtpserver"
 	"github.com/simpleauthlink/authapi/notification"
 )
 
@@ -29,7 +29,7 @@ func TestMain(m *testing.M) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	// start test SMTP server to receive the email
-	testSrv := internal.NewFakeSMTPServer(testServerAddr, testServerPort, inboxChan)
+	testSrv := fakesmtpserver.NewServer(testServerAddr, testServerPort, inboxChan)
 	if err := testSrv.Start(ctx); err != nil {
 		panic(err)
 	}

@@ -2,6 +2,7 @@ package token
 
 import (
 	"bytes"
+	"encoding/hex"
 	"testing"
 	"time"
 )
@@ -52,20 +53,36 @@ func TestValidApp(t *testing.T) {
 	if app.Valid(nil) {
 		t.Errorf("expected invalid app data")
 	}
+	var nilApp *App
+	if nilApp.Valid(nil) {
+		t.Errorf("expected invalid app data")
+	}
+	app.AppSecretHash = testAppSecret.Hash()
+	servicePart := []byte("invalid-service-secret")
+	appPart := []byte("invalid-app-secret")
+	invalidSecret := new(Secret).SetParts(servicePart, appPart)
+	if app.Valid(invalidSecret.Hash()) {
+		t.Errorf("expected invalid app data")
+	}
 }
 
 func TestAttributesSetAttributesApp(t *testing.T) {
 	if res := new(App).SetAttributes([]string{}); res != nil {
 		t.Errorf("expected nil, got %v", res)
 	}
-	if res := new(App).SetAttributes([]string{testAppName, testRedirectURI, "no_duration"}); res != nil {
+	strHash := hex.EncodeToString(testAppSecret.Hash())
+	if res := new(App).SetAttributes([]string{testAppName, testRedirectURI, "no_duration", strHash}); res != nil {
 		t.Errorf("expected nil, got %v", res)
 	}
-
 	if res := new(App).SetAttributes([]string{testAppName, "no_url", testSessionDuration.String()}); res != nil {
 		t.Errorf("expected nil, got %v", res)
 	}
-
+	if res := new(App).SetAttributes([]string{testAppName, testRedirectURI, testSessionDuration.String(), "invalid_hash"}); res != nil {
+		t.Errorf("expected nil, got %v", res)
+	}
+	if res := new(App).SetAttributes([]string{testAppName, testRedirectURI, testSessionDuration.String(), "2bbc94cb9c916e1f6f1354ef30c1c80767b85159570304baa402c088180a0ec5"}); res != nil {
+		t.Errorf("expected nil, got %v", res)
+	}
 	app := &App{
 		Name:            testAppName,
 		RedirectURI:     testRedirectURI,
@@ -101,6 +118,12 @@ func TestAttributesSetAttributesApp(t *testing.T) {
 	}
 	if data.SessionDuration != testSessionDuration {
 		t.Errorf("expected session duration %v, got %v", testSessionDuration, data.SessionDuration)
+	}
+	// set an out of range duration to test if the app is valid
+	attrs := app.Attributes()
+	attrs[2] = "1s"
+	if res := new(App).SetAttributes(attrs); res != nil {
+		t.Errorf("expected nil, got %v", res)
 	}
 }
 
@@ -217,5 +240,30 @@ func TestAppID(t *testing.T) {
 	}
 	if newApp.String() != app.String() {
 		t.Errorf("expected %s, got %s", app.String(), newApp.String())
+	}
+}
+
+func TestSetSecretApp(t *testing.T) {
+	var nilApp *App
+	if res := nilApp.SetSecret(nil); res != nil {
+		t.Errorf("expected nil, got %v", res)
+	}
+	app := &App{
+		Name:            testAppName,
+		RedirectURI:     testRedirectURI,
+		SessionDuration: testSessionDuration,
+	}
+	if res := app.SetSecret(nil); res == nil {
+		t.Errorf("expected nil, got %v", res)
+	}
+	if app.AppSecretHash != nil {
+		t.Errorf("expected nil, got %v", app.AppSecretHash)
+	}
+	servicePart := []byte("service-secret")
+	appPart := []byte("app-secret")
+	secret := new(Secret).SetParts(servicePart, appPart)
+	app.SetSecret(secret)
+	if !bytes.Equal(app.AppSecretHash, secret.Hash()) {
+		t.Errorf("expected %v, got %v", secret.Hash(), app.AppSecretHash)
 	}
 }
