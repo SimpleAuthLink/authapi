@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/simpleauthlink/authapi/api/io"
 	"github.com/simpleauthlink/authapi/notification"
 	"github.com/simpleauthlink/authapi/notification/templates/login"
 	"github.com/simpleauthlink/authapi/token"
@@ -18,7 +19,7 @@ import (
 // session duration.
 func (s *Service) generateAppIDHandler(w http.ResponseWriter, r *http.Request) {
 	// decode the app data from the request body
-	req := new(Request[AppIDRequest])
+	req := new(io.Request[AppIDRequest])
 	if err := req.Read(r); err != nil {
 		DecodeAppIDRequestErr.WithErr(err).Write(w)
 		return
@@ -32,7 +33,7 @@ func (s *Service) generateAppIDHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// return the app id
-	ResponseWith(&AppIDResponse{app.ID(secret).String()}).WriteJSON(w)
+	io.ResponseWith(&AppIDResponse{app.ID(secret).String()}).WriteJSON(w)
 }
 
 func (s *Service) requestTokenHandler(w http.ResponseWriter, r *http.Request) {
@@ -57,7 +58,7 @@ func (s *Service) requestTokenHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// decode the token request from the request body
-	req := new(Request[TokenRequest])
+	req := new(io.Request[TokenRequest])
 	if err := req.Read(r); err != nil {
 		DecodeTokenRequestErr.WithErr(err).Write(w)
 		return
@@ -88,7 +89,7 @@ func (s *Service) requestTokenHandler(w http.ResponseWriter, r *http.Request) {
 		SendEmailErr.WithErr(err).Write(w)
 		return
 	}
-	OkResponse().WriteJSON(w)
+	io.OkResponse().WriteJSON(w)
 }
 
 func (s *Service) verifyTokenHandler(w http.ResponseWriter, r *http.Request) {
@@ -113,7 +114,7 @@ func (s *Service) verifyTokenHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// decode the token status request from the request body
-	req := new(Request[TokenStatusRequest])
+	req := new(io.Request[TokenStatusRequest])
 	if err := req.Read(r); err != nil {
 		DecodeTokenStatusRequestErr.WithErr(err).Write(w)
 		return
@@ -121,14 +122,14 @@ func (s *Service) verifyTokenHandler(w http.ResponseWriter, r *http.Request) {
 	// check if the token is valid
 	tkn := new(token.Token).SetString(req.Data.Token)
 	exp := tkn.Expiration().Time()
-	ResponseWith(&TokenStatusResponse{
+	io.ResponseWith(&TokenStatusResponse{
 		Valid:      appID.VerifyToken(*tkn, *secret, req.Data.Email),
 		Expiration: exp,
 	}).WriteJSON(w)
 }
 
 func (s *Service) healthCheckHandler(w http.ResponseWriter, r *http.Request) {
-	OkResponse().Write(w)
+	io.OkResponse().Write(w)
 }
 
 func (s *Service) demoInboxHandler(w http.ResponseWriter, r *http.Request) {

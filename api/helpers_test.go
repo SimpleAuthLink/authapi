@@ -16,19 +16,19 @@ func TestAppConfigFromRequest(t *testing.T) {
 	}{
 		{
 			name:           "Valid headers",
-			headers:        map[string]string{AppIDHeader: "testAppID", AppSecretHeader: "testAppSecret"},
+			headers:        map[string]string{appIDHeader: "testAppID", appSecretHeader: "testAppSecret"},
 			expectedAppID:  "testAppID",
 			expectedSecret: "testAppSecret",
 			expectError:    false,
 		},
 		{
 			name:        "Missing app id",
-			headers:     map[string]string{AppSecretHeader: "testAppSecret"},
+			headers:     map[string]string{appSecretHeader: "testAppSecret"},
 			expectError: true,
 		},
 		{
 			name:        "Missing app secret",
-			headers:     map[string]string{AppIDHeader: "testAppID"},
+			headers:     map[string]string{appIDHeader: "testAppID"},
 			expectError: true,
 		},
 		{
