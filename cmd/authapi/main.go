@@ -15,6 +15,7 @@ type config struct {
 	host      string
 	port      int
 	emailAddr string
+	emailUser string
 	emailPass string
 	emailHost string
 	emailPort int
@@ -33,11 +34,12 @@ func main() {
 	osflag.StringVar(&c.host, cmd.HostEnv, cmd.HostFlag, cmd.DefaultHost, cmd.HostFlagDesc, false)
 	osflag.IntVar(&c.port, cmd.PortEnv, cmd.PortFlag, cmd.DefaultPort, cmd.HostFlagDesc, false)
 	osflag.StringVar(&c.emailAddr, cmd.EmailAddrEnv, cmd.EmailAddrFlag, cmd.DefaultEmailAddr, cmd.EmailAddrFlagDesc, true)
+	osflag.StringVar(&c.emailUser, cmd.EmailUserEnv, cmd.EmailUserFlag, cmd.DefaultEmailUser, cmd.EmailUserFlagDesc, true)
 	osflag.StringVar(&c.emailPass, cmd.EmailPassEnv, cmd.EmailPassFlag, cmd.DefaultEmailPass, cmd.EmailPassFlagDesc, true)
 	osflag.StringVar(&c.emailHost, cmd.EmailHostEnv, cmd.EmailHostFlag, cmd.DefaultEmailHost, cmd.EmailHostFlagDesc, true)
 	osflag.IntVar(&c.emailPort, cmd.EmailPortEnv, cmd.EmailPortFlag, cmd.DefaultEmailPort, cmd.EmailPortFlagDesc, false)
 	osflag.StringVar(&c.secret, cmd.SecretEnv, cmd.SecretFlag, cmd.DefaultSecret, cmd.SecretFlagDesc, true)
-	if err := osflag.Parse(); err != nil {
+	if err := osflag.Parse(nil); err != nil {
 		log.Fatalln("ERR: error parsing flags:", err)
 	}
 	if !osflag.Parsed() {
@@ -49,7 +51,7 @@ func main() {
 	emailQueue, err := email.NewEmailQueue(context.Background(), &email.EmailConfig{
 		FromName:     "SimpleAuthLink",
 		FromAddress:  c.emailAddr,
-		SMTPUsername: c.emailAddr,
+		SMTPUsername: c.emailUser,
 		SMTPPassword: c.emailPass,
 		SMTPServer:   c.emailHost,
 		SMTPPort:     c.emailPort,

@@ -19,7 +19,7 @@ func main() {
 	osflag.StringVar(&demoServer, cmd.HostEnv, cmd.HostFlag, cmd.DefaultHost, cmd.HostFlagDesc, false)
 	osflag.IntVar(&demoPort, cmd.PortEnv, cmd.PortFlag, cmd.DefaultPort, cmd.PortFlagDesc, false)
 	osflag.StringVar(&demoSecret, cmd.SecretEnv, cmd.SecretFlag, cmd.DefaultSecret, cmd.SecretFlagDesc, false)
-	if err := osflag.Parse(); err != nil {
+	if err := osflag.Parse(nil); err != nil {
 		log.Fatalln("ERR: error parsing flags:", err)
 	}
 	log.Println("INF: starting service with config:", demoServer, demoPort, demoSecret)

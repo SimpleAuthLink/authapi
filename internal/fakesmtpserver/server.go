@@ -1,5 +1,13 @@
 package fakesmtpserver
 
+// fakesmtpserver package provides a simple SMTP server for testing purposes.
+// It allows you to simulate an SMTP server that can receive emails and store
+// them in a channel. This is useful for testing email sending functionality
+// in applications without needing to set up a real SMTP server. The server
+// can be started and stopped, and it handles basic SMTP commands like HELO,
+// MAIL FROM, RCPT TO, and DATA. It also provides a way to retrieve the
+// received emails from the inbox channel.
+
 import (
 	"bufio"
 	"context"
@@ -40,11 +48,13 @@ func (s *FakeSMTPServer) Start(ctx context.Context) error {
 		for {
 			select {
 			case <-ctx.Done():
-				s.Stop() // Use Stop to safely close the listener
+				// use Stop to safely close the listener
+				s.Stop()
 				return
 			default:
+				// copy listener under lock
 				s.mu.Lock()
-				listener := s.listener // Copy listener under lock
+				listener := s.listener
 				s.mu.Unlock()
 				if listener == nil {
 					return
@@ -62,12 +72,15 @@ func (s *FakeSMTPServer) Start(ctx context.Context) error {
 
 // Stop method shuts down the test SMTP server.
 func (s *FakeSMTPServer) Stop() {
+	// copy listener under lock
 	s.mu.Lock()
-	listener := s.listener // Copy listener under lock
-	s.listener = nil       // Set listener to nil under lock
+	listener := s.listener
+	// set listener to nil under lock and unlock
+	s.listener = nil
 	s.mu.Unlock()
+	// close the listener if it is not nil
 	if listener != nil {
-		listener.Close() // Close listener outside the lock
+		listener.Close()
 	}
 }
 
