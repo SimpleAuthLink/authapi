@@ -1,27 +1,44 @@
 package api
 
-const (
-	userTokenSubject = "Here is your magic link for '%s' 🔐"
-	appTokenSubject  = "Your app '%s' is ready! 🎉"
+import (
+	"time"
+
+	"github.com/simpleauthlink/authapi/token"
 )
 
-// TokenRequest struct includes the required information by the API service to
-// create a token, which is the email of the user. The app secret is also
-// required but it is provided in the request headers.
-type TokenRequest struct {
-	Email       string `json:"email"`
+type AppIDRequest struct {
+	Name        string `json:"name"`
+	Duration    string `json:"session_duration"`
 	RedirectURL string `json:"redirect_url"`
-	Duration    uint64 `json:"session_duration"`
+	Secret      string `json:"secret"`
 }
 
-// AppData struct includes the required information by the API service to
-// create an app, which are the name, the email of the admin, the session
-// duration and the callback URL.
-type AppData struct {
-	Name         string `json:"name"`
-	Email        string `json:"admin_email"`
-	Duration     uint64 `json:"session_duration"`
-	RedirectURL  string `json:"redirect_url"`
-	UsersQuota   int64  `json:"users_quota"`
-	CurrentUsers int64  `json:"current_users"`
+func (data *AppIDRequest) parseApp() (*token.App, string) {
+	if duration, err := time.ParseDuration(data.Duration); err == nil {
+		app := &token.App{
+			Name:            data.Name,
+			RedirectURI:     data.RedirectURL,
+			SessionDuration: duration,
+		}
+		return app, data.Secret
+	}
+	return new(token.App), ""
+}
+
+type AppIDResponse struct {
+	ID string `json:"id"`
+}
+
+type TokenRequest struct {
+	Email string `json:"email"`
+}
+
+type TokenStatusRequest struct {
+	Token string `json:"token"`
+	Email string `json:"email"`
+}
+
+type TokenStatusResponse struct {
+	Valid      bool      `json:"valid"`
+	Expiration time.Time `json:"expiration"`
 }
