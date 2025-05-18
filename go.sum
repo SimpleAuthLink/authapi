@@ -1,4 +1,2 @@
-github.com/lucasmenendez/apihandler v0.0.8 h1:xHBNqdg+/eKpmjSvcQIkfIWxhsBcQa5TpwRzU00KugU=
-github.com/lucasmenendez/apihandler v0.0.8/go.mod h1:u19tqauhQwxXbR2rw9//dCdM7oNNqzzPbByHh7R1imU=
-golang.org/x/time v0.11.0 h1:/bpjEDfN9tkoN/ryeYHnv5hcMlc8ncjMcM4XBk5NWV0=
-golang.org/x/time v0.11.0/go.mod h1:CDIdPxbZBQxdj6cxyCIdrNogrJKMJ7pr37NYpMcMDSg=
+github.com/lucasmenendez/apihandler v0.0.9 h1:zn/e5Sszi+GFLXNxUONm21M5uq1Fg/9cDN0BoVCvK8A=
+github.com/lucasmenendez/apihandler v0.0.9/go.mod h1:YZdczL55/HFLSgM4PrEsl+ynxiPXDBeGpagK31Tpe8Q=

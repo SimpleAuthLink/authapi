@@ -75,7 +75,7 @@ func New(ctx context.Context, cfg *Config, nq notification.Queue) (*Service, err
 		cancel:  cancel,
 		cfg:     cfg,
 		nq:      nq,
-		handler: apihandler.NewHandler(true, nil),
+		handler: apihandler.NewHandler(true),
 	}
 	// demo stuff
 	if cfg.DemoMode {
@@ -87,11 +87,13 @@ func New(ctx context.Context, cfg *Config, nq notification.Queue) (*Service, err
 		}
 		_ = srv.handler.Get(DemoInboxPath, srv.demoInboxHandler)
 	}
+	// create the rate limiter
+	rl := apihandler.NewRateLimiter(internalCtx, 100, time.Minute)
 	// register the routes and handlers
-	_ = srv.handler.Post(AppsPath, srv.generateAppIDHandler)
-	_ = srv.handler.Post(TokensPath, srv.requestTokenHandler)
-	_ = srv.handler.Put(TokensPath, srv.verifyTokenHandler)
-	_ = srv.handler.Get(HealthCheckPath, srv.healthCheckHandler)
+	_ = srv.handler.Post(AppsPath, rl.Middleware(srv.generateAppIDHandler))
+	_ = srv.handler.Post(TokensPath, rl.Middleware(srv.requestTokenHandler))
+	_ = srv.handler.Put(TokensPath, rl.Middleware(srv.verifyTokenHandler))
+	_ = srv.handler.Get(HealthCheckPath, rl.Middleware(srv.healthCheckHandler))
 	// build the http server
 	srv.httpServer = &http.Server{
 		Addr:    fmt.Sprintf("%s:%d", cfg.Server, cfg.ServerPort),
