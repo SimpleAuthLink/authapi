@@ -17,10 +17,10 @@ const (
 
 // other api related constants
 const (
-	// appIDHeader constant is the header of the app ID in the request. It is
+	// AppIDHeader constant is the header of the app ID in the request. It is
 	// used to authenticate the app making the request.
-	appIDHeader = "AppID"
-	// appSecretHeader constant is the header of the app secret in the request
+	AppIDHeader = "AppID"
+	// AppSecretHeader constant is the header of the app secret in the request
 	// It is used to authenticate the app making the request.
-	appSecretHeader = "AppSecret"
+	AppSecretHeader = "AppSecret"
 )

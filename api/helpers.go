@@ -13,11 +13,11 @@ import (
 // service.
 func appConfigFromRequest(r *http.Request) (string, string, error) {
 	// get the app id from the request header
-	strAppID := r.Header.Get(appIDHeader)
+	strAppID := r.Header.Get(AppIDHeader)
 	if strAppID == "" {
 		return "", "", fmt.Errorf("missing app id")
 	}
-	strAppSecret := r.Header.Get(appSecretHeader)
+	strAppSecret := r.Header.Get(AppSecretHeader)
 	if strAppSecret == "" {
 		return "", "", fmt.Errorf("missing app secret")
 	}

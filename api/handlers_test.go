@@ -142,7 +142,7 @@ func TestRequestTokenAndStatusHandler(t *testing.T) {
 		method:   http.MethodPost,
 		endpoint: TokensPath,
 		header: http.Header{
-			appSecretHeader: []string{testAppSecret},
+			AppSecretHeader: []string{testAppSecret},
 		},
 		request: &TokenRequest{
 			Email: testUserEmail,
@@ -155,8 +155,8 @@ func TestRequestTokenAndStatusHandler(t *testing.T) {
 		method:   http.MethodPost,
 		endpoint: TokensPath,
 		header: http.Header{
-			appIDHeader:     []string{"invalid"},
-			appSecretHeader: []string{testAppSecret},
+			AppIDHeader:     []string{"invalid"},
+			AppSecretHeader: []string{testAppSecret},
 		},
 		request: &TokenRequest{
 			Email: testUserEmail,
@@ -169,7 +169,7 @@ func TestRequestTokenAndStatusHandler(t *testing.T) {
 		method:   http.MethodPost,
 		endpoint: TokensPath,
 		header: http.Header{
-			appIDHeader: []string{testAppID.String()},
+			AppIDHeader: []string{testAppID.String()},
 		},
 		request: &TokenRequest{
 			Email: testUserEmail,
@@ -182,8 +182,8 @@ func TestRequestTokenAndStatusHandler(t *testing.T) {
 		method:   http.MethodPost,
 		endpoint: TokensPath,
 		header: http.Header{
-			appIDHeader:     []string{testAppID.String()},
-			appSecretHeader: []string{testAppSecret},
+			AppIDHeader:     []string{testAppID.String()},
+			AppSecretHeader: []string{testAppSecret},
 		},
 		request: &TokenRequest{
 			Email: "",
@@ -197,8 +197,8 @@ func TestRequestTokenAndStatusHandler(t *testing.T) {
 		method:   http.MethodPost,
 		endpoint: TokensPath,
 		header: http.Header{
-			appIDHeader:     []string{testAppID.String()},
-			appSecretHeader: []string{testAppSecret},
+			AppIDHeader:     []string{testAppID.String()},
+			AppSecretHeader: []string{testAppSecret},
 		},
 		request:  &invalid,
 		response: nil,
@@ -214,8 +214,8 @@ func TestRequestTokenAndStatusHandler(t *testing.T) {
 		method:   http.MethodPost,
 		endpoint: TokensPath,
 		header: http.Header{
-			appIDHeader:     []string{testAppID.String()},
-			appSecretHeader: []string{testAppSecret},
+			AppIDHeader:     []string{testAppID.String()},
+			AppSecretHeader: []string{testAppSecret},
 		},
 		request: &TokenRequest{
 			Email: testUserEmail,
@@ -240,8 +240,8 @@ func TestRequestTokenAndStatusHandler(t *testing.T) {
 		method:   http.MethodPut,
 		endpoint: TokensPath,
 		header: http.Header{
-			appIDHeader:     []string{testAppID.String()},
-			appSecretHeader: []string{testAppSecret},
+			AppIDHeader:     []string{testAppID.String()},
+			AppSecretHeader: []string{testAppSecret},
 		},
 		request: &TokenStatusRequest{
 			Token: testToken.String(),
@@ -258,8 +258,8 @@ func TestRequestTokenAndStatusHandler(t *testing.T) {
 		method:   http.MethodPut,
 		endpoint: TokensPath,
 		header: http.Header{
-			appIDHeader:     []string{"invalid"},
-			appSecretHeader: []string{testAppSecret},
+			AppIDHeader:     []string{"invalid"},
+			AppSecretHeader: []string{testAppSecret},
 		},
 		request: &TokenStatusRequest{
 			Token: testToken.String(),
@@ -274,7 +274,7 @@ func TestRequestTokenAndStatusHandler(t *testing.T) {
 		method:   http.MethodPut,
 		endpoint: TokensPath,
 		header: http.Header{
-			appIDHeader: []string{testAppID.String()},
+			AppIDHeader: []string{testAppID.String()},
 		},
 		request: &TokenStatusRequest{
 			Token: testToken.String(),
@@ -301,8 +301,8 @@ func TestRequestTokenAndStatusHandler(t *testing.T) {
 		method:   http.MethodPut,
 		endpoint: TokensPath,
 		header: http.Header{
-			appIDHeader:     []string{testAppID.String()},
-			appSecretHeader: []string{testAppSecret},
+			AppIDHeader:     []string{testAppID.String()},
+			AppSecretHeader: []string{testAppSecret},
 		},
 		err: DecodeTokenStatusRequestErr,
 	}.Run(t)

@@ -60,21 +60,32 @@ func TestAPIError_With(t *testing.T) {
 }
 
 func TestAPIError_Write(t *testing.T) {
-	err := NewAPIError(1001, http.StatusBadRequest)
-	err.Message = "Bad Request"
-	err.Err = "Invalid input"
+	t.Run("write error", func(t *testing.T) {
+		err := NewAPIError(1001, http.StatusInternalServerError)
+		rr := httptest.NewRecorder()
+		err.Write(&errorWriter{ResponseRecorder: rr})
+		if status := rr.Code; status != http.StatusInternalServerError {
+			t.Errorf("expected status code %d, got %d", http.StatusInternalServerError, status)
+		}
+	})
 
-	rr := httptest.NewRecorder()
-	err.Write(rr)
+	t.Run("success", func(t *testing.T) {
+		err := NewAPIError(1001, http.StatusBadRequest)
+		err.Message = "Bad Request"
+		err.Err = "Invalid input"
 
-	if status := rr.Code; status != http.StatusBadRequest {
-		t.Errorf("expected status code %d, got %d", http.StatusBadRequest, status)
-	}
+		rr := httptest.NewRecorder()
+		err.Write(rr)
 
-	expected := `{"code":1001,"message":"Bad Request","error":"Invalid input"}`
-	if rr.Body.String() != expected {
-		t.Errorf("expected body %s, got %s", expected, rr.Body.String())
-	}
+		if status := rr.Code; status != http.StatusBadRequest {
+			t.Errorf("expected status code %d, got %d", http.StatusBadRequest, status)
+		}
+
+		expected := `{"code":1001,"message":"Bad Request","error":"Invalid input"}`
+		if rr.Body.String() != expected {
+			t.Errorf("expected body %s, got %s", expected, rr.Body.String())
+		}
+	})
 }
 
 func TestAPIError_bytes(t *testing.T) {

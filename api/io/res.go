@@ -2,6 +2,7 @@ package io
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 )
 
@@ -54,15 +55,14 @@ func OkResponse(body ...byte) *Response[any] {
 func (r *Response[T]) WriteJSON(w http.ResponseWriter) {
 	if !r.empty {
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
 		if err := json.NewEncoder(w).Encode(r.Data); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		return
 	}
-	w.WriteHeader(http.StatusOK)
 	if _, err := w.Write([]byte(http.StatusText(http.StatusOK))); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 }
 
@@ -76,7 +76,6 @@ func (r *Response[T]) WriteJSON(w http.ResponseWriter) {
 // send simple text responses. It is a more generic method than WriteJSON, as
 // it does not require the response data to be JSON-serializable.
 func (r *Response[T]) Write(w http.ResponseWriter) {
-	w.WriteHeader(http.StatusOK)
 	if r.empty {
 		if _, err := w.Write([]byte(http.StatusText(http.StatusOK))); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -88,6 +87,39 @@ func (r *Response[T]) Write(w http.ResponseWriter) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	}
+}
+
+// Read reads the response data from the provided http.Response. It expects
+// the response body to be in JSON format and unmarshals it into the provided
+// generic type T. If the response status code is not 200 OK, it returns an
+// error indicating the unexpected status code. If there is an error reading
+// the response body or unmarshaling the JSON data, it returns an error. This
+// method is useful for handling HTTP responses in a generic way, allowing
+// you to read and process the response data without needing to know the
+// specific type of the response data in advance.
+func (r *Response[T]) Read(res *http.Response) (T, error) {
+	if res == nil {
+		return *new(T), ErrNilRequest
+	}
+	if res.Body == nil {
+		return *new(T), ErrNilRequestBody
+	}
+	defer res.Body.Close()
+	result := new(T)
+	// read the response body
+	rawBody, err := io.ReadAll(res.Body)
+	if err != nil {
+		return *result, ErrReadBody
+	}
+	// check the status code of the response
+	if res.StatusCode != http.StatusOK {
+		return *result, ErrHTTPStatusNotOk
+	}
+	// unmarshal the response body into the result
+	if err := json.Unmarshal(rawBody, result); err != nil {
+		return *result, ErrDecodeBody
+	}
+	return *result, nil
 }
 
 // bytes returns the response data as a byte slice. If the response is empty,

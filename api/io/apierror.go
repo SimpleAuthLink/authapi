@@ -68,10 +68,7 @@ func (e *APIError) Write(w http.ResponseWriter) {
 // bytes serializes the APIError to JSON bytes. If an error occurs during
 // serialization, it returns nil.
 func (e *APIError) bytes() []byte {
-	bErr, err := json.Marshal(e)
-	if err != nil {
-		return nil
-	}
+	bErr, _ := json.Marshal(e)
 	return bErr
 }
 
