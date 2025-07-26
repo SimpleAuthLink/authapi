@@ -18,6 +18,9 @@ func (exp *Expiration) Valid() bool {
 
 // Time method returns the expiration time as a time.Time.
 func (exp *Expiration) Time() time.Time {
+	if exp == nil {
+		return time.Time{}
+	}
 	return time.Time(*exp)
 }
 

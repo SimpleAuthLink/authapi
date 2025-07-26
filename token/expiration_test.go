@@ -18,6 +18,21 @@ func TestValidExpiration(t *testing.T) {
 	}
 }
 
+func TestExpirationTime(t *testing.T) {
+	var nilExp *Expiration
+	if nilExp.Time() != (time.Time{}) {
+		t.Errorf("expected zero time, got %v", nilExp.Time())
+	}
+	exp := new(Expiration).SetDuration(minDuration * 2)
+	if exp.Time().IsZero() {
+		t.Errorf("expected valid time, got zero time")
+	}
+	expected := time.Now().Add(minDuration * 2)
+	if expected.Sub(exp.Time()) > time.Millisecond*300 {
+		t.Errorf("expected %v, got %v", expected, exp.Time())
+	}
+}
+
 func TestTimeSetTimeExpiration(t *testing.T) {
 	var nilExp *Expiration
 	exp := nilExp.SetTime(time.Now().Add(minDuration * 2))

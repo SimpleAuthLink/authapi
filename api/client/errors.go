@@ -12,6 +12,7 @@ var (
 	ErrInvalidAppSecret          = fmt.Errorf("invalid application secret")
 	ErrInvalidEmailAddress       = fmt.Errorf("invalid email address")
 	ErrAPIUnavailable            = fmt.Errorf("API is unavailable")
+	ErrRequestAppID              = fmt.Errorf("failed to request application ID")
 	ErrRequestToken              = fmt.Errorf("failed to request token")
 	ErrInvalidToken              = fmt.Errorf("invalid token provided")
 	ErrCreateRequest             = fmt.Errorf("failed to create request")

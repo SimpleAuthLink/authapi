@@ -49,6 +49,9 @@ func (c *Config) Validate(requireApp bool) error {
 	if c.APIEndpoint == "" {
 		return ErrInvalidAPIEndpoint
 	}
+	if _, err := url.ParseRequestURI(c.APIEndpoint); err != nil {
+		return ErrInvalidAPIEndpoint
+	}
 	if c.Timeout <= 0 {
 		return ErrInvalidTimeout
 	}
@@ -94,7 +97,7 @@ func New(cfg *Config) (*Client, error) {
 	// make a request to the health check endpoint
 	resp, err := httpClient.Do(r)
 	if err != nil {
-		return nil, err
+		return nil, ErrAPIUnavailable
 	}
 	defer resp.Body.Close()
 	// check if the response is OK
@@ -146,7 +149,7 @@ func (c *Client) NewAppID(name, redirectURI, secret string, sessionDuration time
 	// make the request to the API
 	res, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, ErrRequestAppID
 	}
 	// read the response data, it also checks if the response is OK and closes
 	// the response body
@@ -186,7 +189,7 @@ func (c *Client) RequestToken(email string) error {
 	// make the request to the API
 	res, err := c.httpClient.Do(req)
 	if err != nil {
-		return err
+		return ErrAPIUnavailable
 	}
 	defer res.Body.Close()
 	// check if the response is OK
@@ -228,7 +231,7 @@ func (c *Client) VerifyToken(token *token.Token, email string) (bool, time.Time,
 	// make the request to the API
 	res, err := c.httpClient.Do(req)
 	if err != nil {
-		return false, time.Time{}, err
+		return false, time.Time{}, ErrAPIUnavailable
 	}
 	// decode the response data, it also checks if the response is OK and
 	// closes the response body
