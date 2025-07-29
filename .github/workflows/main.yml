@@ -1,75 +1,50 @@
 name: Build and Test
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
+    push:
+        branches:
+            - main
+    pull_request:
 
 jobs:
-  job_go_checks:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-      - name: Set up Go environment
-        uses: actions/setup-go@v5
-        with:
-          go-version: "1.24"
-      - name: Tidy go module
-        run: |
-          go mod tidy
-          if [[ $(git status --porcelain) ]]; then
-            git diff
-            echo
-            echo "go mod tidy made these changes, please run 'go mod tidy' and include those changes in a commit"
-            exit 1
-          fi
-      - name: Run gofumpt
-        run: diff -u <(echo -n) <(go run mvdan.cc/gofumpt@@latest -d .)
-      - name: Run go vet
-        run: go vet ./...
+    job_go_checks:
+        runs-on: ubuntu-latest
+        defaults:
+            run:
+                shell: bash
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 1
+            - name: Set up Go environment
+              uses: actions/setup-go@v5
+              with:
+                  go-version: "1.24"
+            - name: Tidy go module
+              run: |
+                  go mod tidy
+                  if [[ $(git status --porcelain) ]]; then
+                    git diff
+                    echo
+                    echo "go mod tidy made these changes, please run 'go mod tidy' and include those changes in a commit"
+                    exit 1
+                  fi
+            - name: Run gofumpt
+              run: diff -u <(echo -n) <(go run mvdan.cc/gofumpt@@latest -d .)
+            - name: Run go vet
+              run: go vet ./...
 
-  job_go_test:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
-      - name: Set up Go environment
-        uses: actions/setup-go@v5
-        with:
-          go-version: "1.24"
-      - name: Run Go test -race
-        run: go test ./...  -v -race -timeout=1h
-      - name: Rerun Go test to generate coverage report
-        run: |
-          go test -v -timeout 15m -coverprofile=./cover.out -json ./... > tests.log
-      - name: Convert report to html
-        run: go tool cover -html=cover.out -o cover.html
-      - name: Print coverage report
-        run: |
-          set -o pipefail && cat tests.log | node .github/parse-coverage-report.js >> $GITHUB_STEP_SUMMARY
-          echo $GITHUB_STEP_SUMMARY
-      - name: Print coverage report
-        run: |
-          go tool cover -func=cover.out > ./cover.txt
-          echo "<details><summary>📏 Tests coverage</summary>" >> $GITHUB_STEP_SUMMARY
-          echo -e "\n\`\`\`" >> $GITHUB_STEP_SUMMARY
-          cat ./cover.txt >> $GITHUB_STEP_SUMMARY
-          echo -e "\`\`\`\n</details>" >> $GITHUB_STEP_SUMMARY
-      - name: Store coverage report
-        uses: actions/upload-artifact@v4
-        with:
-          name: report
-          path: |
-            tests.log
-            cover.txt
-            cover.out
-            cover.html
+    job_go_test:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 2
+            - name: Set up Go environment
+              uses: actions/setup-go@v5
+              with:
+                  go-version: "1.24"
+            - name: Run Go test -race
+              run: go test ./...  -v -race -timeout=1h
