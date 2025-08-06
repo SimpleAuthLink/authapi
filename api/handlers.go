@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 
 	"github.com/simpleauthlink/authapi/api/io"
 	"github.com/simpleauthlink/authapi/notification"
@@ -74,7 +75,7 @@ func (s *Service) requestTokenHandler(w http.ResponseWriter, r *http.Request) {
 		AppName: app.Name,
 		Email:   req.Data.Email,
 		Token:   token.String(),
-		Link:    app.RedirectURI + token.String(),
+		Link:    app.RedirectURI + url.QueryEscape(token.String()),
 	}
 	loginEmail, err := login.Template.Compose(notification.NotificationParams{
 		To:      req.Data.Email,
