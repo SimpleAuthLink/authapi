@@ -48,7 +48,9 @@ func (testCase testCaseAPIHandler[Rq, Rs]) Run(t *testing.T) {
 		if err != nil {
 			t.Fatalf("could not send request: %v", err)
 		}
-		defer resp.Body.Close()
+		defer func() {
+			_ = resp.Body.Close()
+		}()
 		switch {
 		case testCase.err != nil:
 			if resp.StatusCode != testCase.err.StatusCode {

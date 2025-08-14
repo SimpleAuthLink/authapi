@@ -11,13 +11,18 @@ import (
 	"github.com/simpleauthlink/authapi/token"
 )
 
-// DefaultClientTimeout is the default timeout for the client requests. It can
-// be overridden in the Config struct.
-const DefaultClientTimeout = 30 * time.Second
-
-// DefaultAPIEndpoint is the default API endpoint for the client. It can be
-// overridden in the Config struct.
-const DefaultAPIEndpoint = "https://api.simpleauth.link"
+const (
+	// DefaultClientTimeout is the default timeout for the client requests. It
+	// can be overridden in the Config struct.
+	DefaultClientTimeout = 30 * time.Second
+	// DefaultAPIEndpoint is the default API endpoint for the client. It can be
+	// overridden in the Config struct.
+	DefaultAPIEndpoint       = "https://api.simpleauth.link"
+	DefaultAuthTokenHeader   = "X-Auth-Token"
+	DefaultAuthEmailHeader   = "X-Auth-User"
+	DefaultAuthTokenURLParam = "token"
+	DefaultAuthEmailURLParam = "user"
+)
 
 // Config holds the configuration for the client. It includes the API endpoint,
 // application ID, application secret, and the timeout for requests. All fields
@@ -99,7 +104,9 @@ func New(cfg *Config) (*Client, error) {
 	if err != nil {
 		return nil, ErrAPIUnavailable
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	// check if the response is OK
 	if resp.StatusCode != http.StatusOK {
 		return nil, ErrAPIUnavailable
@@ -109,6 +116,29 @@ func New(cfg *Config) (*Client, error) {
 		config:     cfg,
 		httpClient: httpClient,
 	}, nil
+}
+
+// Default method creates a new Client instance with the default configuration
+// and the provided application ID and secret. Both inputs are required. The
+// application ID is expected as a string to prevent the user from converting
+// it.
+func Default(strAppID, appSecret string) (*Client, error) {
+	if appSecret == "" {
+		return nil, ErrInvalidAppSecret
+	}
+	if strAppID == "" {
+		return nil, ErrInvalidAppID
+	}
+	appID := new(token.AppID).SetString(strAppID)
+	if !new(token.App).SetID(appID).Valid(nil) {
+		return nil, ErrInvalidAppID
+	}
+	return New(&Config{
+		APIEndpoint: DefaultAPIEndpoint,
+		AppID:       appID,
+		AppSecret:   appSecret,
+		Timeout:     DefaultClientTimeout,
+	})
 }
 
 // NewAppID method creates a new AppID with the provided name, redirect URI,
@@ -191,7 +221,9 @@ func (c *Client) RequestToken(email string) error {
 	if err != nil {
 		return ErrAPIUnavailable
 	}
-	defer res.Body.Close()
+	defer func() {
+		_ = res.Body.Close()
+	}()
 	// check if the response is OK
 	if res.StatusCode != http.StatusOK {
 		return ErrRequestToken
@@ -241,6 +273,63 @@ func (c *Client) VerifyToken(token *token.Token, email string) (bool, time.Time,
 	}
 	// return the verification result and expiration time
 	return resData.Valid, resData.Expiration, nil
+}
+
+// AuthorizedRequestURLParams method checks if the request is authorized by
+// verifying the token and email from the URL params of the request using the
+// current client instance. It receives the request to check, and returns the
+// user email in the request and a boolean that indicates if the token in the
+// request is currently valid. If the client configuration is invalid, the
+// request does not contains the required information or the validation fails,
+// it returns an error.
+func (c *Client) AuthorizedRequestURLParams(r *http.Request) (string, bool, error) {
+	if err := c.config.Validate(true); err != nil {
+		return "", false, err
+	}
+	params, err := url.ParseQuery(r.URL.RawQuery)
+	if err != nil {
+		// map it to your sentinel
+		return "", false, ErrMissingAuthURLParams
+	}
+	// get the strToken and email from the request headers
+	strToken, _ := url.QueryUnescape(params.Get(DefaultAuthTokenURLParam))
+	userEmail, _ := url.QueryUnescape(params.Get(DefaultAuthEmailURLParam))
+	// check if the token and email are valid
+	if strToken == "" || userEmail == "" {
+		return "", false, ErrMissingAuthURLParams
+	}
+	userToken := new(token.Token).SetString(strToken)
+	valid, _, err := c.VerifyToken(userToken, userEmail)
+	if err != nil {
+		return "", false, err
+	}
+	return userEmail, valid, nil
+}
+
+// AuthorizedRequestHeaders method checks if the request is authorized by
+// verifying the token and email from the headers of the request using the
+// current client instance. It receives the request to check, and returns the
+// user email in the request and a boolean that indicates if the token in the
+// request is currently valid. If the client configuration is invalid, the
+// request does not contains the required information or the validation fails,
+// it returns an error.
+func (c *Client) AuthorizedRequestHeaders(r *http.Request) (string, bool, error) {
+	if err := c.config.Validate(true); err != nil {
+		return "", false, err
+	}
+	// get the strToken and email from the request headers
+	strToken := r.Header.Get(DefaultAuthTokenHeader)
+	userEmail := r.Header.Get(DefaultAuthEmailHeader)
+	// check if the token and email are valid
+	if strToken == "" || userEmail == "" {
+		return "", false, ErrMissingAuthHeaders
+	}
+	userToken := new(token.Token).SetString(strToken)
+	valid, _, err := c.VerifyToken(userToken, userEmail)
+	if err != nil {
+		return "", false, err
+	}
+	return userEmail, valid, nil
 }
 
 // req internal method creates a new HTTP request with the provided config,

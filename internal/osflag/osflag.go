@@ -128,13 +128,13 @@ func (of *OsFlagSet) Parse(opts *Options) error {
 	// check if all required flags are set
 	for name, osf := range of.flags {
 		if envValue := os.Getenv(osf.env); envValue != "" {
-			if err := of.FlagSet.Set(name, envValue); err != nil {
+			if err := of.Set(name, envValue); err != nil {
 				return fmt.Errorf("failed to set flag %s from env: %w", name, err)
 			}
 		}
 		// check if the flag is required and not set
 		if osf.required {
-			f := of.FlagSet.Lookup(name)
+			f := of.Lookup(name)
 			if f == nil || f.Value.String() == "" {
 				return fmt.Errorf("required flag %s is not set", name)
 			}
@@ -225,7 +225,9 @@ func loadEnv(path string) error {
 		}
 		return fmt.Errorf("failed to open env file: %w", err)
 	}
-	defer envFile.Close()
+	defer func() {
+		_ = envFile.Close()
+	}()
 	// create a line scanner
 	scanner := bufio.NewScanner(envFile)
 	for scanner.Scan() {
@@ -244,7 +246,9 @@ func loadEnv(path string) error {
 		value := strings.TrimSpace(parts[1])
 		value = strings.Trim(value, "\"'") // remove surrounding quotes
 		// set var in the current env
-		os.Setenv(key, value)
+		if err := os.Setenv(key, value); err != nil {
+			return fmt.Errorf("failed to set env variable %q: %w", key, err)
+		}
 	}
 	return nil
 }

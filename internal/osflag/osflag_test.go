@@ -19,8 +19,12 @@ func resetCommandLine() {
 func TestBoolVar(t *testing.T) {
 	resetCommandLine()
 	var flagValue bool
-	os.Setenv("TEST_BOOL", "true")
-	defer os.Unsetenv("TEST_BOOL")
+	if err := os.Setenv("TEST_BOOL", "true"); err != nil {
+		t.Fatalf("Failed to set env variable: %v", err)
+	}
+	defer func() {
+		_ = os.Unsetenv("TEST_BOOL")
+	}()
 
 	CommandLine.BoolVar(&flagValue, "TEST_BOOL", "boolFlag", false, "A boolean flag", false)
 	if err := CommandLine.Parse(nil); err != nil {
@@ -35,8 +39,12 @@ func TestBoolVar(t *testing.T) {
 func TestDurationVar(t *testing.T) {
 	resetCommandLine()
 	var flagValue time.Duration
-	os.Setenv("TEST_DURATION", "5s")
-	defer os.Unsetenv("TEST_DURATION")
+	if err := os.Setenv("TEST_DURATION", "5s"); err != nil {
+		t.Fatalf("Failed to set env variable: %v", err)
+	}
+	defer func() {
+		_ = os.Unsetenv("TEST_DURATION")
+	}()
 
 	CommandLine.DurationVar(&flagValue, "TEST_DURATION", "durationFlag", 0, "A duration flag", false)
 	if err := CommandLine.Parse(nil); err != nil {
@@ -51,8 +59,12 @@ func TestDurationVar(t *testing.T) {
 func TestFloat64Var(t *testing.T) {
 	resetCommandLine()
 	var flagValue float64
-	os.Setenv("TEST_FLOAT", "3.14")
-	defer os.Unsetenv("TEST_FLOAT")
+	if err := os.Setenv("TEST_FLOAT", "3.14"); err != nil {
+		t.Fatalf("Failed to set env variable: %v", err)
+	}
+	defer func() {
+		_ = os.Unsetenv("TEST_FLOAT")
+	}()
 
 	CommandLine.Float64Var(&flagValue, "TEST_FLOAT", "floatFlag", 0.0, "A float flag", false)
 	if err := CommandLine.Parse(nil); err != nil {
@@ -67,8 +79,12 @@ func TestFloat64Var(t *testing.T) {
 func TestIntVar(t *testing.T) {
 	resetCommandLine()
 	var flagValue int
-	os.Setenv("TEST_INT", "42")
-	defer os.Unsetenv("TEST_INT")
+	if err := os.Setenv("TEST_INT", "42"); err != nil {
+		t.Fatalf("Failed to set env variable: %v", err)
+	}
+	defer func() {
+		_ = os.Unsetenv("TEST_INT")
+	}()
 
 	CommandLine.IntVar(&flagValue, "TEST_INT", "intFlag", 0, "An int flag", false)
 	if err := CommandLine.Parse(nil); err != nil {
@@ -83,8 +99,12 @@ func TestIntVar(t *testing.T) {
 func TestStringVar(t *testing.T) {
 	resetCommandLine()
 	var flagValue string
-	os.Setenv("TEST_STRING", "hello")
-	defer os.Unsetenv("TEST_STRING")
+	if err := os.Setenv("TEST_STRING", "hello"); err != nil {
+		t.Fatalf("Failed to set env variable: %v", err)
+	}
+	defer func() {
+		_ = os.Unsetenv("TEST_STRING")
+	}()
 
 	CommandLine.StringVar(&flagValue, "TEST_STRING", "stringFlag", "default", "A string flag", false)
 	if err := CommandLine.Parse(nil); err != nil {
@@ -99,8 +119,12 @@ func TestStringVar(t *testing.T) {
 func TestUintVar(t *testing.T) {
 	resetCommandLine()
 	var flagValue uint
-	os.Setenv("TEST_UINT", "100")
-	defer os.Unsetenv("TEST_UINT")
+	if err := os.Setenv("TEST_UINT", "100"); err != nil {
+		t.Fatalf("Failed to set env variable: %v", err)
+	}
+	defer func() {
+		_ = os.Unsetenv("TEST_UINT")
+	}()
 
 	CommandLine.UintVar(&flagValue, "TEST_UINT", "uintFlag", 0, "A uint flag", false)
 	if err := CommandLine.Parse(nil); err != nil {
@@ -147,7 +171,9 @@ func TestLoadEnv(t *testing.T) {
 	if err := os.WriteFile(envFilePath, envFileContent, 0o644); err != nil {
 		t.Fatalf("Failed to create env file: %v", err)
 	}
-	defer os.Remove(envFilePath)
+	defer func() {
+		_ = os.Remove(envFilePath)
+	}()
 	// parse flags and check the value
 	var flagValue string
 	CommandLine.StringVar(&flagValue, "TEST_ENV", "envFlag", "defaultValue", "A flag with an env variable", false)

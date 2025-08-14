@@ -80,15 +80,19 @@ func (s *FakeSMTPServer) Stop() {
 	s.mu.Unlock()
 	// close the listener if it is not nil
 	if listener != nil {
-		listener.Close()
+		_ = listener.Close()
 	}
 }
 
 func (s *FakeSMTPServer) handleConn(conn net.Conn) {
-	defer conn.Close()
+	defer func() {
+		_ = conn.Close()
+	}()
 	reader := bufio.NewReader(conn)
 	// send greeting
-	fmt.Fprintf(conn, "220 Fake SMTP Service Ready\r\n")
+	if _, err := fmt.Fprintf(conn, "220 Fake SMTP Service Ready\r\n"); err != nil {
+		return
+	}
 	var dataBuilder strings.Builder
 	inData := false
 	// read incoming data
@@ -103,7 +107,9 @@ func (s *FakeSMTPServer) handleConn(conn net.Conn) {
 			if line == "." {
 				inData = false
 				// send back a confirmation and store the data
-				fmt.Fprintf(conn, "250 OK\r\n")
+				if _, err := fmt.Fprintf(conn, "250 OK\r\n"); err != nil {
+					return
+				}
 				s.inbox <- dataBuilder.String()
 				dataBuilder.Reset()
 				continue
@@ -114,21 +120,22 @@ func (s *FakeSMTPServer) handleConn(conn net.Conn) {
 		// simple command handling
 		switch {
 		case strings.HasPrefix(line, "HELO"), strings.HasPrefix(line, "EHLO"):
-			fmt.Fprintf(conn, "250 Hello\r\n")
+			_, _ = fmt.Fprintf(conn, "250 Hello\r\n")
 		case strings.HasPrefix(line, "MAIL FROM:"):
-			fmt.Fprintf(conn, "250 OK\r\n")
+			_, _ = fmt.Fprintf(conn, "250 OK\r\n")
 		case strings.HasPrefix(line, "RCPT TO:"):
-			fmt.Fprintf(conn, "250 OK\r\n")
+			_, _ = fmt.Fprintf(conn, "250 OK\r\n")
 		case strings.HasPrefix(line, "DATA"):
 			// prepare to receive data
-			fmt.Fprintf(conn, "354 End data with <CR><LF>.<CR><LF>\r\n")
+			_, _ = fmt.Fprintf(conn, "354 End data with <CR><LF>.<CR><LF>\r\n")
 			inData = true
 		case strings.HasPrefix(line, "QUIT"):
 			// close the connection
-			fmt.Fprintf(conn, "221 Bye\r\n")
+			_, _ = fmt.Fprintf(conn, "221 Bye\r\n")
 			return
 		default:
-			fmt.Fprintf(conn, "250 OK\r\n")
+			_, _ = fmt.Fprintf(conn, "250 OK\r\n")
 		}
+
 	}
 }

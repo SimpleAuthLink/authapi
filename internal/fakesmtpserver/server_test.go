@@ -15,7 +15,9 @@ func getFreePort() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer listener.Close()
+	defer func() {
+		_ = listener.Close()
+	}()
 	return listener.Addr().String(), nil
 }
 
@@ -71,7 +73,9 @@ func TestFakeSMTPServer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect to server: %v", err)
 	}
-	defer conn.Close()
+	defer func() {
+		_ = conn.Close()
+	}()
 
 	reader := bufio.NewReader(conn)
 	writer := bufio.NewWriter(conn)
@@ -85,7 +89,9 @@ func TestFakeSMTPServer(t *testing.T) {
 	if _, err := writer.WriteString("HELO localhost\r\n"); err != nil {
 		t.Fatalf("Failed to write HELO command: %v", err)
 	}
-	writer.Flush()
+	if err := writer.Flush(); err != nil {
+		t.Fatalf("Failed to flush writer: %v", err)
+	}
 	if response, _ := reader.ReadString('\n'); !strings.HasPrefix(response, "250") {
 		t.Fatalf("Expected HELO response, got: %s", response)
 	}
@@ -94,7 +100,9 @@ func TestFakeSMTPServer(t *testing.T) {
 	if _, err := writer.WriteString("MAIL FROM:<test@example.com>\r\n"); err != nil {
 		t.Fatalf("Failed to write MAIL FROM command: %v", err)
 	}
-	writer.Flush()
+	if err := writer.Flush(); err != nil {
+		t.Fatalf("Failed to flush writer: %v", err)
+	}
 	if response, _ := reader.ReadString('\n'); !strings.HasPrefix(response, "250") {
 		t.Fatalf("Expected MAIL FROM response, got: %s", response)
 	}
@@ -103,7 +111,9 @@ func TestFakeSMTPServer(t *testing.T) {
 	if _, err := writer.WriteString("RCPT TO:<recipient@example.com>\r\n"); err != nil {
 		t.Fatalf("Failed to write RCPT TO command: %v", err)
 	}
-	writer.Flush()
+	if err := writer.Flush(); err != nil {
+		t.Fatalf("Failed to flush writer: %v", err)
+	}
 	if response, _ := reader.ReadString('\n'); !strings.HasPrefix(response, "250") {
 		t.Fatalf("Expected RCPT TO response, got: %s", response)
 	}
@@ -112,7 +122,9 @@ func TestFakeSMTPServer(t *testing.T) {
 	if _, err := writer.WriteString("DATA\r\n"); err != nil {
 		t.Fatalf("Failed to write DATA command: %v", err)
 	}
-	writer.Flush()
+	if err := writer.Flush(); err != nil {
+		t.Fatalf("Failed to flush writer: %v", err)
+	}
 	if response, _ := reader.ReadString('\n'); !strings.HasPrefix(response, "354") {
 		t.Fatalf("Expected DATA response, got: %s", response)
 	}
@@ -121,7 +133,9 @@ func TestFakeSMTPServer(t *testing.T) {
 	if _, err := writer.WriteString("Subject: Test Email\r\n\r\nThis is a test email.\r\n.\r\n"); err != nil {
 		t.Fatalf("Failed to write email content: %v", err)
 	}
-	writer.Flush()
+	if err := writer.Flush(); err != nil {
+		t.Fatalf("Failed to flush writer: %v", err)
+	}
 	if response, _ := reader.ReadString('\n'); !strings.HasPrefix(response, "250") {
 		t.Fatalf("Expected email content response, got: %s", response)
 	}
@@ -130,7 +144,9 @@ func TestFakeSMTPServer(t *testing.T) {
 	if _, err := writer.WriteString("QUIT\r\n"); err != nil {
 		t.Fatalf("Failed to write QUIT command: %v", err)
 	}
-	writer.Flush()
+	if err := writer.Flush(); err != nil {
+		t.Fatalf("Failed to flush writer: %v", err)
+	}
 	if response, _ := reader.ReadString('\n'); !strings.HasPrefix(response, "221") {
 		t.Fatalf("Expected QUIT response, got: %s", response)
 	}
@@ -188,7 +204,9 @@ func TestFakeSMTPServer_UnsupportedCommand(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect to server: %v", err)
 	}
-	defer conn.Close()
+	defer func() {
+		_ = conn.Close()
+	}()
 
 	reader := bufio.NewReader(conn)
 	writer := bufio.NewWriter(conn)
@@ -202,7 +220,9 @@ func TestFakeSMTPServer_UnsupportedCommand(t *testing.T) {
 	if _, err := writer.WriteString("FOO BAR\r\n"); err != nil {
 		t.Fatalf("Failed to write unsupported command: %v", err)
 	}
-	writer.Flush()
+	if err := writer.Flush(); err != nil {
+		t.Fatalf("Failed to flush writer: %v", err)
+	}
 	if response, _ := reader.ReadString('\n'); !strings.HasPrefix(response, "250") {
 		t.Fatalf("Expected default response, got: %s", response)
 	}

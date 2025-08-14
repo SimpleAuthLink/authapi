@@ -104,7 +104,9 @@ func (r *Response[T]) Read(res *http.Response) (T, error) {
 	if res.Body == nil {
 		return *new(T), ErrNilRequestBody
 	}
-	defer res.Body.Close()
+	defer func() {
+		_ = res.Body.Close()
+	}()
 	result := new(T)
 	// read the response body
 	rawBody, err := io.ReadAll(res.Body)

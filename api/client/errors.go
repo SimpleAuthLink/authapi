@@ -16,4 +16,6 @@ var (
 	ErrRequestToken              = fmt.Errorf("failed to request token")
 	ErrInvalidToken              = fmt.Errorf("invalid token provided")
 	ErrCreateRequest             = fmt.Errorf("failed to create request")
+	ErrMissingAuthHeaders        = fmt.Errorf("missing authentication headers")
+	ErrMissingAuthURLParams      = fmt.Errorf("missing authentication URL parameters")
 )
