@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -24,8 +25,8 @@ import (
 var (
 	// server
 	testServer       = "127.0.0.1"
-	testPort         = 8082
-	testEmailPort    = 2526
+	testPort         = randomPort()
+	testEmailPort    = randomPort()
 	testEndpoint     = fmt.Sprintf("http://%s:%d", testServer, testPort)
 	testServerSecret = "serversecret"
 	testServerEmail  = "server@email.com"
@@ -912,4 +913,12 @@ func Test_req(t *testing.T) {
 func randomEmail() string {
 	randStr := strings.ToLower(rand.Text()[0:8])
 	return fmt.Sprintf("%s@example.com", randStr)
+}
+
+func randomPort() int {
+	port, err := rand.Int(rand.Reader, big.NewInt(65535-1024))
+	if err != nil {
+		panic(err)
+	}
+	return int(port.Int64()) + 1024
 }
