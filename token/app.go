@@ -2,10 +2,11 @@ package token
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/hex"
 	"strings"
 	"time"
+
+	"github.com/simpleauthlink/authapi/internal/base64url"
 )
 
 // App represents an application that can request tokens. It has a name, a
@@ -123,20 +124,17 @@ func (app *App) Marshal() []byte {
 	if !app.Valid(nil) {
 		return nil
 	}
-	bApp := app.Bytes()
-	b := make([]byte, base64.RawStdEncoding.EncodedLen(len(bApp)))
-	base64.RawStdEncoding.Encode(b, bApp)
-	return b
+	return base64url.RawEncode(app.Bytes())
 }
 
 // Unmarshal method sets the app from a base64-encoded byte slice. It is used
 // to extract the app from the app ID.
 func (app *App) Unmarshal(data []byte) *App {
-	b := make([]byte, base64.RawStdEncoding.DecodedLen(len(data)))
-	if _, err := base64.RawStdEncoding.Decode(b, data); err != nil {
+	bApp, err := base64url.RawDecode(data)
+	if err != nil {
 		return nil
 	}
-	return app.SetBytes(b)
+	return app.SetBytes(bApp)
 }
 
 // ID method returns the app ID of the app. The app ID is a self-contained

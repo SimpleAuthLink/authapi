@@ -4,7 +4,8 @@ import (
 	"crypto/ed25519"
 	"crypto/hmac"
 	"crypto/sha256"
-	"encoding/base64"
+
+	"github.com/simpleauthlink/authapi/internal/base64url"
 )
 
 // AppID represents an application ID that is used to generate and verify
@@ -101,9 +102,7 @@ func (id *AppID) Sign(secret Secret, msg []byte) []byte {
 	// sign the data with the private key
 	rawSign := ed25519.Sign(privKey, data[:])
 	// encode the signature to base64 and return it
-	sign := make([]byte, base64.RawStdEncoding.EncodedLen(len(rawSign)))
-	base64.RawStdEncoding.Encode(sign, rawSign)
-	return sign
+	return base64url.RawEncode(rawSign)
 }
 
 // Verify method returns true if the signature of the message is valid for
@@ -126,8 +125,8 @@ func (id *AppID) Verify(secret Secret, msg, sig []byte) bool {
 		return false
 	}
 	// decode sign from base64
-	rawSign := make([]byte, base64.RawStdEncoding.DecodedLen(len(sig)))
-	if _, err := base64.RawStdEncoding.Decode(rawSign, sig); err != nil {
+	rawSign, err := base64url.RawDecode(sig)
+	if err != nil {
 		return false
 	}
 	// recover the data with the nonce and the message
