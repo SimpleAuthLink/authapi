@@ -292,8 +292,8 @@ func (c *Client) AuthorizedRequestURLParams(r *http.Request) (string, bool, erro
 		return "", false, ErrMissingAuthURLParams
 	}
 	// get the strToken and email from the request headers
-	strToken, _ := url.QueryUnescape(params.Get(DefaultAuthTokenURLParam))
-	userEmail, _ := url.QueryUnescape(params.Get(DefaultAuthEmailURLParam))
+	strToken := params.Get(DefaultAuthTokenURLParam)
+	userEmail := params.Get(DefaultAuthEmailURLParam)
 	// check if the token and email are valid
 	if strToken == "" || userEmail == "" {
 		return "", false, ErrMissingAuthURLParams

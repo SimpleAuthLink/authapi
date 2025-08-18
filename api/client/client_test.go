@@ -592,8 +592,8 @@ func TestAuthorizedRequestURLParams(t *testing.T) {
 		}
 		reqURL, _ := url.Parse("http://example.com/test")
 		reqURL.RawQuery = fmt.Sprintf("%s=%s&%s=%s",
-			DefaultAuthEmailURLParam, url.QueryEscape(testEmail),
-			DefaultAuthTokenURLParam, url.QueryEscape(testToken.String()))
+			DefaultAuthEmailURLParam, testEmail,
+			DefaultAuthTokenURLParam, testToken.String())
 
 		req, err := http.NewRequest(http.MethodGet, reqURL.String(), nil)
 		if err != nil {
@@ -644,8 +644,8 @@ func TestAuthorizedRequestURLParams(t *testing.T) {
 		invalidEmail := "noemail.com"
 		reqURL, _ := url.Parse("http://example.com/test")
 		reqURL.RawQuery = fmt.Sprintf("%s=%s&%s=%s",
-			DefaultAuthEmailURLParam, url.QueryEscape(invalidEmail),
-			DefaultAuthTokenURLParam, url.QueryEscape(testToken.String()))
+			DefaultAuthEmailURLParam, invalidEmail,
+			DefaultAuthTokenURLParam, testToken.String())
 
 		req, err := http.NewRequest(http.MethodGet, reqURL.String(), nil)
 		if err != nil {
