@@ -1,8 +1,9 @@
 package token
 
 import (
-	"encoding/base64"
 	"time"
+
+	"github.com/simpleauthlink/authapi/internal/base64url"
 )
 
 // Expiration represents a time when a token expires. It is a wrapper around
@@ -120,17 +121,15 @@ func (exp *Expiration) Marshal() []byte {
 	if len(bExp) == 0 || bExp[0] == 0 {
 		return nil
 	}
-	b := make([]byte, base64.RawStdEncoding.EncodedLen(len(bExp)))
-	base64.RawStdEncoding.Encode(b, bExp)
-	return b
+	return base64url.RawEncode(bExp)
 }
 
 // Unmarshal method sets the expiration time from a base64 encoded byte slice. It
 // is useful for decoding the expiration time. If the expiration is nil or
 // invalid, nil is returned.
 func (exp *Expiration) Unmarshal(data []byte) *Expiration {
-	b := make([]byte, base64.RawStdEncoding.DecodedLen(len(data)))
-	if _, err := base64.RawStdEncoding.Decode(b, data); err != nil {
+	b, err := base64url.RawDecode(data)
+	if err != nil {
 		return nil
 	}
 	return exp.SetBytes(b)

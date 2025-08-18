@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -24,8 +25,8 @@ import (
 var (
 	// server
 	testServer       = "127.0.0.1"
-	testPort         = 8082
-	testEmailPort    = 2526
+	testPort         = randomPort()
+	testEmailPort    = randomPort()
 	testEndpoint     = fmt.Sprintf("http://%s:%d", testServer, testPort)
 	testServerSecret = "serversecret"
 	testServerEmail  = "server@email.com"
@@ -591,8 +592,8 @@ func TestAuthorizedRequestURLParams(t *testing.T) {
 		}
 		reqURL, _ := url.Parse("http://example.com/test")
 		reqURL.RawQuery = fmt.Sprintf("%s=%s&%s=%s",
-			DefaultAuthEmailURLParam, url.QueryEscape(testEmail),
-			DefaultAuthTokenURLParam, url.QueryEscape(testToken.String()))
+			DefaultAuthEmailURLParam, testEmail,
+			DefaultAuthTokenURLParam, testToken.String())
 
 		req, err := http.NewRequest(http.MethodGet, reqURL.String(), nil)
 		if err != nil {
@@ -643,8 +644,8 @@ func TestAuthorizedRequestURLParams(t *testing.T) {
 		invalidEmail := "noemail.com"
 		reqURL, _ := url.Parse("http://example.com/test")
 		reqURL.RawQuery = fmt.Sprintf("%s=%s&%s=%s",
-			DefaultAuthEmailURLParam, url.QueryEscape(invalidEmail),
-			DefaultAuthTokenURLParam, url.QueryEscape(testToken.String()))
+			DefaultAuthEmailURLParam, invalidEmail,
+			DefaultAuthTokenURLParam, testToken.String())
 
 		req, err := http.NewRequest(http.MethodGet, reqURL.String(), nil)
 		if err != nil {
@@ -912,4 +913,12 @@ func Test_req(t *testing.T) {
 func randomEmail() string {
 	randStr := strings.ToLower(rand.Text()[0:8])
 	return fmt.Sprintf("%s@example.com", randStr)
+}
+
+func randomPort() int {
+	port, err := rand.Int(rand.Reader, big.NewInt(65535-1024))
+	if err != nil {
+		panic(err)
+	}
+	return int(port.Int64()) + 1024
 }
