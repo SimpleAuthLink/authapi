@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/simpleauthlink/authapi/internal/base64url"
+	"go.k7z7z.cc/x/encoding/base64url"
 )
 
 // App represents an application that can request tokens. It has a name, a
@@ -16,32 +16,35 @@ type App struct {
 	RedirectURI     string
 	SessionDuration time.Duration
 	AppSecretHash   []byte
+	Secret          *Secret
 }
 
 // Valid method returns true if the app is valid, false otherwise. An app is
 // considered valid if its name is between 3 and 20 characters, its redirect
 // URI is a valid URI, and its session duration is between 5 minutes and 24
 // hours.
-func (app *App) Valid(secretHash []byte) bool {
+func (app *App) Valid(secretHash []byte) error {
 	if app == nil {
-		return false
+		return ErrInvalidApp
 	}
 	// check if the app name is between the min and max length
 	if len(app.Name) < appNameMinLen || len(app.Name) > appNameMaxLen {
-		return false
+		return ErrInvalidAppName
 	}
 	// check if the redirect URI is valid
 	if !uriRegexp.MatchString(app.RedirectURI) || len(app.RedirectURI) > redirectURIMaxLen {
-		return false
+		return ErrInvalidRedirectURI
 	}
 	// check if the session duration is between the min and max duration
 	if app.SessionDuration < minDuration || app.SessionDuration > maxDuration {
-		return false
+		return ErrInvalidSessionDuration
 	}
 	if secretHash != nil {
-		return bytes.Equal(app.AppSecretHash, secretHash)
+		if !bytes.Equal(app.AppSecretHash, secretHash) {
+			return ErrInvalidSecret
+		}
 	}
-	return true
+	return nil
 }
 
 // Attributes method returns the app's attributes as a slice of strings. This
@@ -79,7 +82,7 @@ func (app *App) SetAttributes(attrs []string) *App {
 	}
 	app.AppSecretHash = appSecretHash
 	// check if the app is valid and return it if it is
-	if !app.Valid(nil) {
+	if err := app.Valid(nil); err != nil {
 		return nil
 	}
 	return app
@@ -89,7 +92,7 @@ func (app *App) SetAttributes(attrs []string) *App {
 // and encoding the app. The resulting string is the app's attributes joined
 // by the app data separator.
 func (app *App) String() string {
-	if !app.Valid(nil) {
+	if err := app.Valid(nil); err != nil {
 		return ""
 	}
 	// join the app's attributes with the app data separator
@@ -121,7 +124,7 @@ func (app *App) SetBytes(data []byte) *App {
 // Marshal method returns the app as a base64-encoded byte slice. It is used
 // to be included in the app ID, which makes it self-contained.
 func (app *App) Marshal() []byte {
-	if !app.Valid(nil) {
+	if err := app.Valid(nil); err != nil {
 		return nil
 	}
 	return base64url.RawEncode(app.Bytes())
@@ -142,7 +145,7 @@ func (app *App) Unmarshal(data []byte) *App {
 // created by encoding the app as a base64-encoded byte slice using the
 // Marshal method.
 func (app *App) ID(secret *Secret) *AppID {
-	if !app.Valid(secret.Hash()) {
+	if err := app.Valid(secret.Hash()); err != nil {
 		return nil
 	}
 	return new(AppID).SetBytes(app.Marshal())
@@ -168,5 +171,6 @@ func (app *App) SetSecret(secret *Secret) *App {
 	}
 	// set the app secret hash
 	app.AppSecretHash = secret.Hash()
+	app.Secret = secret
 	return app
 }
