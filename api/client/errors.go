@@ -1,21 +1,22 @@
 package client
 
-import "fmt"
+import "go.k7z7z.cc/x/errors"
 
 var (
-	ErrInvalidAPIEndpoint        = fmt.Errorf("invalid API endpoint")
-	ErrInvalidTimeout            = fmt.Errorf("invalid timeout value")
-	ErrInvalidAppID              = fmt.Errorf("invalid application ID")
-	ErrInvalidAppName            = fmt.Errorf("invalid application ID name")
-	ErrInvalidAppRedirectURI     = fmt.Errorf("invalid application redirect URI")
-	ErrInvalidAppSessionDuration = fmt.Errorf("invalid application session duration")
-	ErrInvalidAppSecret          = fmt.Errorf("invalid application secret")
-	ErrInvalidEmailAddress       = fmt.Errorf("invalid email address")
-	ErrAPIUnavailable            = fmt.Errorf("API is unavailable")
-	ErrRequestAppID              = fmt.Errorf("failed to request application ID")
-	ErrRequestToken              = fmt.Errorf("failed to request token")
-	ErrInvalidToken              = fmt.Errorf("invalid token provided")
-	ErrCreateRequest             = fmt.Errorf("failed to create request")
-	ErrMissingAuthHeaders        = fmt.Errorf("missing authentication headers")
-	ErrMissingAuthURLParams      = fmt.Errorf("missing authentication URL parameters")
+	ErrInvalidAPIEndpoint        = errors.New("invalid API endpoint")
+	ErrInvalidTimeout            = errors.New("invalid timeout value")
+	ErrInvalidAppID              = errors.New("invalid application ID")
+	ErrInvalidAppName            = errors.New("invalid application ID name")
+	ErrInvalidAppRedirectURI     = errors.New("invalid application redirect URI")
+	ErrInvalidAppSessionDuration = errors.New("invalid application session duration")
+	ErrInvalidAppSecret          = errors.New("invalid application secret")
+	ErrInvalidEmailAddress       = errors.New("invalid email address")
+	ErrInvalidRequestTokenInputs = errors.New("invalid request token inputs")
+	ErrAPIUnavailable            = errors.New("API is unavailable")
+	ErrRequestAppID              = errors.New("failed to request application ID")
+	ErrRequestToken              = errors.New("failed to request token")
+	ErrInvalidToken              = errors.New("invalid token provided")
+	ErrCreateRequest             = errors.New("failed to create request")
+	ErrMissingAuthHeaders        = errors.New("missing authentication headers")
+	ErrMissingAuthURLParams      = errors.New("missing authentication URL parameters")
 )
