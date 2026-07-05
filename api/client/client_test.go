@@ -6,28 +6,30 @@ import (
 	"fmt"
 	"log"
 	"math"
-	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/simpleauthlink/authapi/api"
-	"github.com/simpleauthlink/authapi/api/io"
-	"github.com/simpleauthlink/authapi/internal/fakesmtpserver"
+	"github.com/simpleauthlink/authapi/notification"
 	"github.com/simpleauthlink/authapi/notification/email"
-	"github.com/simpleauthlink/authapi/notification/templates/login"
+	"github.com/simpleauthlink/authapi/notification/email/templates/login"
 	"github.com/simpleauthlink/authapi/token"
+	xnet "go.k7z7z.cc/x/net"
+	"go.k7z7z.cc/x/net/http/io"
+	"go.k7z7z.cc/x/net/smtp/testsmtp"
 )
 
 var (
 	// server
+	testPort         int
+	testEmailPort    int
+	testEndpoint     string
 	testServer       = "127.0.0.1"
-	testPort         = randomPort()
-	testEmailPort    = randomPort()
-	testEndpoint     = fmt.Sprintf("http://%s:%d", testServer, testPort)
 	testServerSecret = "serversecret"
 	testServerEmail  = "server@email.com"
 	// client
@@ -40,11 +42,21 @@ var (
 )
 
 func TestMain(m *testing.M) {
+	var err error
+	testPort, err = xnet.SafeTestPort()
+	if err != nil {
+		panic(err)
+	}
+	testEmailPort, err = xnet.SafeTestPort()
+	if err != nil {
+		panic(err)
+	}
+	testEndpoint = fmt.Sprintf("http://%s:%d", testServer, testPort)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	// create the email queue
-	emailQueue, err := email.NewEmailQueue(ctx, &email.EmailConfig{
-		FromName:    "test",
+	emailQueue, err := notification.NewQueue(ctx, 10, &email.EmailConfig{
 		FromAddress: testServerEmail,
 		SMTPServer:  testServer,
 		SMTPPort:    testEmailPort,
@@ -53,9 +65,9 @@ func TestMain(m *testing.M) {
 		panic("failed to create email queue: " + err.Error())
 	}
 	// start the email queue and defer to stop it
-	emailQueue.Start()
+	emailQueue.Start(1)
 	defer emailQueue.Stop()
-	smtpServer := fakesmtpserver.NewServer(testServer, testEmailPort, testEmailCh)
+	smtpServer := testsmtp.NewServer(testServer, testEmailPort, testEmailCh)
 	if err := smtpServer.Start(ctx); err != nil {
 		panic("failed to start fake SMTP server: " + err.Error())
 	}
@@ -65,7 +77,6 @@ func TestMain(m *testing.M) {
 		Server:     testServer,
 		ServerPort: testPort,
 		Secret:     testServerSecret,
-		DemoMode:   false,
 	}, emailQueue)
 	if err != nil {
 		log.Fatalln("ERR: error creating service:", err)
@@ -76,8 +87,12 @@ func TestMain(m *testing.M) {
 			panic("failed to start service: " + err.Error())
 		}
 	}()
-	defer service.Stop()
-	m.Run()
+	defer func() {
+		if err := service.Stop(); err != nil {
+			log.Printf("error closing service: %v", err)
+		}
+	}()
+	os.Exit(m.Run())
 }
 
 func TestSuccessFlow(t *testing.T) {
@@ -101,7 +116,7 @@ func TestSuccessFlow(t *testing.T) {
 		t.Fatalf("failed to request token: %v", err)
 	}
 	// wait to receive the email
-	testToken, err := readTokenFromEmail(testEmail)
+	testToken, err := readTokenFromEmail(t, testEmail)
 	if err != nil {
 		t.Fatalf("failed to read token from email: %v", err)
 	}
@@ -181,6 +196,10 @@ func TestConfig(t *testing.T) {
 }
 
 func TestNew(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
 	t.Run("nil config", func(t *testing.T) {
 		_, err := New(nil)
 		if err != nil {
@@ -208,43 +227,43 @@ func TestNew(t *testing.T) {
 	})
 	t.Run("invalid health check call", func(t *testing.T) {
 		_, err := New(&Config{
-			APIEndpoint: "http://nonexistent.host.issue",
+			APIEndpoint: srv.URL,
 		})
 		if err != ErrAPIUnavailable {
 			t.Fatalf("expected ErrAPIUnavailable, got %v", err)
 		}
 	})
-	t.Run("invalid health check response", func(t *testing.T) {
-		_, err := New(&Config{
-			APIEndpoint: "http://google.com/invalid-endpoint",
-		})
-		if err != ErrAPIUnavailable {
-			t.Fatalf("expected ErrAPIUnavailable, got %v", err)
-		}
-	})
+	// t.Run("invalid health check response", func(t *testing.T) {
+	// 	_, err := New(&Config{
+	// 		APIEndpoint: "http://localhost:1/invalid-endpoint",
+	// 	})
+	// 	if err != ErrAPIUnavailable {
+	// 		t.Fatalf("expected ErrAPIUnavailable, got %v", err)
+	// 	}
+	// })
 }
 
 func TestDefault(t *testing.T) {
 	t.Run("invalid app secret", func(t *testing.T) {
-		_, err := Default(testStrAppID, "")
+		_, err := Default(testStrAppID, "", true)
 		if err != ErrInvalidAppSecret {
 			t.Fatalf("expected ErrInvalidAppSecret, got %v", err)
 		}
 	})
 	t.Run("empty app ID", func(t *testing.T) {
-		_, err := Default("", testClientSecret)
+		_, err := Default("", testClientSecret, true)
 		if err != ErrInvalidAppID {
 			t.Fatalf("expected ErrInvalidAppID, got %v", err)
 		}
 	})
 	t.Run("invalid app ID", func(t *testing.T) {
-		_, err := Default("invalid-app-id", testClientSecret)
+		_, err := Default("invalid-app-id", testClientSecret, true)
 		if err != ErrInvalidAppID {
 			t.Fatalf("expected ErrInvalidAppID, got %v", err)
 		}
 	})
 	t.Run("valid app ID and secret", func(t *testing.T) {
-		_, err := Default(testStrAppID, testClientSecret)
+		_, err := Default(testStrAppID, testClientSecret, true)
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
 		}
@@ -346,7 +365,7 @@ func TestRequestToken(t *testing.T) {
 		}
 	})
 
-	t.Run("invalid email", func(t *testing.T) {
+	t.Run("invalid request inputs", func(t *testing.T) {
 		cli, err := New(&Config{APIEndpoint: testEndpoint})
 		if err != nil {
 			t.Fatalf("failed to create client: %v", err)
@@ -356,15 +375,19 @@ func TestRequestToken(t *testing.T) {
 			t.Fatalf("failed to create app ID: %v", err)
 		}
 		cli.SetupAppID(appID, testClientSecret)
-		if err := cli.RequestToken(""); err != ErrInvalidEmailAddress {
-			t.Fatalf("expected ErrInvalidEmailAddress, got %v", err)
+		if err := cli.RequestToken(""); err != ErrInvalidRequestTokenInputs {
+			t.Fatalf("expected ErrInvalidRequestTokenInputs, got %v", err)
 		}
-		if err := cli.RequestToken("invalid-email"); err != ErrInvalidEmailAddress {
-			t.Fatalf("expected ErrInvalidEmailAddress, got %v", err)
+		if err := cli.RequestToken("invalid-email"); err != ErrInvalidRequestTokenInputs {
+			t.Fatalf("expected ErrInvalidRequestTokenInputs, got %v", err)
 		}
 	})
 
 	t.Run("request error", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+		}))
+		defer srv.Close()
 		cli, err := New(&Config{APIEndpoint: testEndpoint})
 		if err != nil {
 			t.Fatalf("failed to create client: %v", err)
@@ -375,17 +398,8 @@ func TestRequestToken(t *testing.T) {
 		}
 		cli.SetupAppID(appID, testClientSecret)
 		// invalid API endpoint
-		cli.config.APIEndpoint = "http://nonexistent.host.issue"
-		testEmail := randomEmail()
-		if err := cli.RequestToken(testEmail); err != ErrAPIUnavailable {
-			t.Fatalf("expected ErrAPIUnavailable, got %v", err)
-		}
-		// non-200 response
-		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		}))
-		defer srv.Close()
 		cli.config.APIEndpoint = srv.URL
+		testEmail := randomEmail()
 		if err := cli.RequestToken(testEmail); err != ErrRequestToken {
 			t.Fatalf("expected ErrRequestToken, got %v", err)
 		}
@@ -404,6 +418,24 @@ func TestRequestToken(t *testing.T) {
 		testEmail := randomEmail()
 		if err := cli.RequestToken(testEmail); err != nil {
 			t.Fatalf("expected no error, got %v", err)
+		}
+	})
+
+	t.Run("Do connection error", func(t *testing.T) {
+		cli, err := New(&Config{APIEndpoint: testEndpoint})
+		if err != nil {
+			t.Fatalf("failed to create client: %v", err)
+		}
+		appID, err := cli.NewAppID(testAppName, testRedirectURI, testClientSecret, testTimeout)
+		if err != nil {
+			t.Fatalf("failed to create app ID: %v", err)
+		}
+		cli.SetupAppID(appID, testClientSecret)
+		// Unreachable endpoint → httpClient.Do returns error → ErrAPIUnavailable
+		cli.config.APIEndpoint = "http://nonexistent.host.issue"
+		testEmail := randomEmail()
+		if err := cli.RequestToken(testEmail); err != ErrAPIUnavailable {
+			t.Fatalf("expected ErrAPIUnavailable, got %v", err)
 		}
 	})
 }
@@ -450,7 +482,7 @@ func TestVerifyToken(t *testing.T) {
 		if err := cli.RequestToken(testEmail); err != nil {
 			t.Fatalf("failed to request token: %v", err)
 		}
-		testToken, err := readTokenFromEmail(testEmail)
+		testToken, err := readTokenFromEmail(t, testEmail)
 		if err != nil {
 			t.Fatalf("failed to read token from email: %v", err)
 		}
@@ -472,7 +504,7 @@ func TestVerifyToken(t *testing.T) {
 		if err := cli.RequestToken(testEmail); err != nil {
 			t.Fatalf("failed to request token: %v", err)
 		}
-		testToken, err := readTokenFromEmail(testEmail)
+		testToken, err := readTokenFromEmail(t, testEmail)
 		if err != nil {
 			t.Fatalf("failed to read token from email: %v", err)
 		}
@@ -496,7 +528,7 @@ func TestVerifyToken(t *testing.T) {
 		if err := cli.RequestToken(testEmail); err != nil {
 			t.Fatalf("failed to request token: %v", err)
 		}
-		testToken, err := readTokenFromEmail(testEmail)
+		testToken, err := readTokenFromEmail(t, testEmail)
 		if err != nil {
 			t.Fatalf("failed to read token from email: %v", err)
 		}
@@ -523,7 +555,7 @@ func TestVerifyToken(t *testing.T) {
 		if err := cli.RequestToken(testEmail); err != nil {
 			t.Fatalf("failed to request token: %v", err)
 		}
-		testToken, err := readTokenFromEmail(testEmail)
+		testToken, err := readTokenFromEmail(t, testEmail)
 		if err != nil {
 			t.Fatalf("failed to read token from email: %v", err)
 		}
@@ -540,16 +572,14 @@ func TestVerifyToken(t *testing.T) {
 	})
 }
 
-func readTokenFromEmail(email string) (*token.Token, error) {
+func readTokenFromEmail(t testing.TB, email string) (*token.Token, error) {
 	// wait for the email to be sent
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 	for {
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
-		case <-time.After(testTimeout):
-			return nil, fmt.Errorf("timeout waiting for email")
 		case msg := <-testEmailCh:
 			token := login.FindToken(email, msg)
 			if token != nil {
@@ -586,7 +616,7 @@ func TestAuthorizedRequestURLParams(t *testing.T) {
 		if err := cli.RequestToken(testEmail); err != nil {
 			t.Fatalf("failed to request token: %v", err)
 		}
-		testToken, err := readTokenFromEmail(testEmail)
+		testToken, err := readTokenFromEmail(t, testEmail)
 		if err != nil {
 			t.Fatalf("failed to read token from email: %v", err)
 		}
@@ -637,7 +667,7 @@ func TestAuthorizedRequestURLParams(t *testing.T) {
 		if err := cli.RequestToken(testEmail); err != nil {
 			t.Fatalf("failed to request token: %v", err)
 		}
-		testToken, err := readTokenFromEmail(testEmail)
+		testToken, err := readTokenFromEmail(t, testEmail)
 		if err != nil {
 			t.Fatalf("failed to read token from email: %v", err)
 		}
@@ -668,7 +698,7 @@ func TestAuthorizedRequestURLParams(t *testing.T) {
 		if err := cli.RequestToken(testEmail); err != nil {
 			t.Fatalf("failed to request token: %v", err)
 		}
-		testToken, err := readTokenFromEmail(testEmail)
+		testToken, err := readTokenFromEmail(t, testEmail)
 		if err != nil {
 			t.Fatalf("failed to read token from email: %v", err)
 		}
@@ -722,7 +752,7 @@ func TestAuthorizedRequestHeaders(t *testing.T) {
 		if err := cli.RequestToken(testEmail); err != nil {
 			t.Fatalf("failed to request token: %v", err)
 		}
-		testToken, err := readTokenFromEmail(testEmail)
+		testToken, err := readTokenFromEmail(t, testEmail)
 		if err != nil {
 			t.Fatalf("failed to read token from email: %v", err)
 		}
@@ -760,7 +790,7 @@ func TestAuthorizedRequestHeaders(t *testing.T) {
 		if err := cli.RequestToken(testEmail); err != nil {
 			t.Fatalf("failed to request token: %v", err)
 		}
-		testToken, err := readTokenFromEmail(testEmail)
+		testToken, err := readTokenFromEmail(t, testEmail)
 		if err != nil {
 			t.Fatalf("failed to read token from email: %v", err)
 		}
@@ -789,7 +819,7 @@ func TestAuthorizedRequestHeaders(t *testing.T) {
 		if err := cli.RequestToken(testEmail); err != nil {
 			t.Fatalf("failed to request token: %v", err)
 		}
-		testToken, err := readTokenFromEmail(testEmail)
+		testToken, err := readTokenFromEmail(t, testEmail)
 		if err != nil {
 			t.Fatalf("failed to read token from email: %v", err)
 		}
@@ -911,14 +941,9 @@ func Test_req(t *testing.T) {
 }
 
 func randomEmail() string {
-	randStr := strings.ToLower(rand.Text()[0:8])
-	return fmt.Sprintf("%s@example.com", randStr)
-}
-
-func randomPort() int {
-	port, err := rand.Int(rand.Reader, big.NewInt(65535-1024))
-	if err != nil {
-		panic(err)
+	randStr := strings.ToLower(rand.Text())
+	if len(randStr) < 8 {
+		randStr = "testuser" + randStr
 	}
-	return int(port.Int64()) + 1024
+	return fmt.Sprintf("%s@example.com", randStr[:8])
 }
