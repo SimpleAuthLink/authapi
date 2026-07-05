@@ -9,7 +9,7 @@ import (
 // headers. It returns an error if the app id or app secret is missing. The
 // app id and app secret are used to authenticate the app making the request.
 // The app id is a unique identifier for the app, and the app secret is a
-// shared secret used to verify the authenticity of the request for  this
+// shared secret used to verify the authenticity of the request for this
 // service.
 func appConfigFromRequest(r *http.Request) (string, string, error) {
 	// get the app id from the request header

@@ -4,7 +4,6 @@ import (
 	_ "embed"
 	"regexp"
 
-	"github.com/simpleauthlink/authapi/notification"
 	"github.com/simpleauthlink/authapi/notification/email"
 	"github.com/simpleauthlink/authapi/token"
 )
@@ -29,15 +28,15 @@ func (d Data) Subject() string {
 // regular expression to fill the template with regex and find the token in
 // the email content. Then it decodes the token and returns it. If the token
 // is not found, it returns nil.
-func FindToken(email, content string) *token.Token {
+func FindToken(emailAddress, content string) *token.Token {
 	loginData := Data{
 		AppName: `.+`,
-		Email:   email,
+		Email:   emailAddress,
 		Token:   `(.+\..+)`,
 		Link:    `.+`,
 	}
-	loginEmail, err := Template.Compose(notification.NotificationParams{
-		To:      email,
+	loginEmail, err := Template.Compose(email.EmailParams{
+		To:      emailAddress,
 		Subject: loginData.Subject(),
 	}, loginData)
 	if err != nil {
