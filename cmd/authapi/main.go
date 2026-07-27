@@ -32,10 +32,13 @@ func main() {
 		NotificationQueueSize:    1000,
 		NotificationQueueWorkers: 10,
 	}
-	envvars, err := proc.EnvvarsFromFile(".env")
-	if err != nil {
-		log.Errw("error loading env file", "err", err)
-		return
+	envvars := proc.Envvars{}
+	if _, err := os.Stat(".env"); err == nil {
+		if envvars, err = proc.EnvvarsFromFile(".env"); err != nil {
+			log.Errw("error loading env file", "err", err)
+			log.Errw("error decoding env file", "err", err)
+			return
+		}
 	}
 	if err := proc.UnmarshalEnvvars(envvars, c); err != nil {
 		log.Errw("error processing envvars", "err", err)
