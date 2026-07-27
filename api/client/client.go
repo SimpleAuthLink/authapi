@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/simpleauthlink/authapi/api"
-	"github.com/simpleauthlink/authapi/api/io"
 	"github.com/simpleauthlink/authapi/token"
+	"go.k7z7z.cc/x/net/http/io"
 )
 
 const (
@@ -33,6 +33,7 @@ type Config struct {
 	AppID       *token.AppID
 	AppSecret   string
 	Timeout     time.Duration
+	Unsafe      bool
 }
 
 // init method initializes the Config struct with default values if they are
@@ -94,22 +95,24 @@ func New(cfg *Config) (*Client, error) {
 	cfg.init()
 	// create a new HTTP client
 	httpClient := &http.Client{Timeout: cfg.Timeout}
-	// check if the api is reachable
-	r, err := req[any](cfg, http.MethodGet, api.HealthCheckPath, nil)
-	if err != nil {
-		return nil, err
-	}
-	// make a request to the health check endpoint
-	resp, err := httpClient.Do(r)
-	if err != nil {
-		return nil, ErrAPIUnavailable
-	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-	// check if the response is OK
-	if resp.StatusCode != http.StatusOK {
-		return nil, ErrAPIUnavailable
+	if !cfg.Unsafe {
+		// check if the api is reachable
+		r, err := req[any](cfg, http.MethodGet, api.HealthCheckPath, nil)
+		if err != nil {
+			return nil, err
+		}
+		// make a request to the health check endpoint
+		resp, err := httpClient.Do(r)
+		if err != nil {
+			return nil, ErrAPIUnavailable
+		}
+		defer func() {
+			_ = resp.Body.Close()
+		}()
+		// check if the response is OK
+		if resp.StatusCode != http.StatusOK {
+			return nil, ErrAPIUnavailable
+		}
 	}
 	// if everything is fine, return a new client instance
 	return &Client{
@@ -122,7 +125,7 @@ func New(cfg *Config) (*Client, error) {
 // and the provided application ID and secret. Both inputs are required. The
 // application ID is expected as a string to prevent the user from converting
 // it.
-func Default(strAppID, appSecret string) (*Client, error) {
+func Default(strAppID, appSecret string, unsafe bool) (*Client, error) {
 	if appSecret == "" {
 		return nil, ErrInvalidAppSecret
 	}
@@ -130,14 +133,15 @@ func Default(strAppID, appSecret string) (*Client, error) {
 		return nil, ErrInvalidAppID
 	}
 	appID := new(token.AppID).SetString(strAppID)
-	if !new(token.App).SetID(appID).Valid(nil) {
-		return nil, ErrInvalidAppID
+	if err := new(token.App).SetID(appID).Valid(nil); err != nil {
+		return nil, ErrInvalidAppID.With(err)
 	}
 	return New(&Config{
 		APIEndpoint: DefaultAPIEndpoint,
 		AppID:       appID,
 		AppSecret:   appSecret,
 		Timeout:     DefaultClientTimeout,
+		Unsafe:      unsafe,
 	})
 }
 
@@ -206,12 +210,12 @@ func (c *Client) RequestToken(email string) error {
 	if err := c.config.Validate(true); err != nil {
 		return err
 	}
+	data := &api.TokenRequest{Email: email}
 	// check if the email is valid
-	if _, err := mail.ParseAddress(email); err != nil {
-		return ErrInvalidEmailAddress
+	if !data.IsEmail() {
+		return ErrInvalidRequestTokenInputs
 	}
 	// create the request with the email data
-	data := &api.TokenRequest{Email: email}
 	req, err := req(c.config, http.MethodPost, api.TokensPath, data)
 	if err != nil {
 		return err
@@ -360,7 +364,7 @@ func req[T any](config *Config, method, path string, data *T) (*http.Request, er
 	// set the body and content type if data is provided
 	if data != nil {
 		// write json data if provided
-		if err := io.RequestWith(&data).WriteJSON(req); err != nil {
+		if err := io.RequestWith(data).WriteJSON(req); err != nil {
 			return nil, err
 		}
 	}

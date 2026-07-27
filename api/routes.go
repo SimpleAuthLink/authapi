@@ -3,16 +3,13 @@ package api
 // routes paths constants
 const (
 	// HealthCheckPath constant is the path used to check the health of the API
-	// server. It is a string with a value of "/health".
+	// server. It is a string with a value of "/ping".
 	HealthCheckPath = "/ping"
 	// AppsPath constant is the path used to create the apps in the API server.
 	AppsPath = "/apps"
 	// TokensPath constant is the path used to generate and verify the tokens
 	// in the API server.
 	TokensPath = "/tokens"
-	// DemoInboxPath constant is the path used to get the demo email inbox
-	// in the API server when it runs in demo mode.
-	DemoInboxPath = "/demo/inbox"
 )
 
 // other api related constants

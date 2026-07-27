@@ -21,47 +21,47 @@ func TestValidApp(t *testing.T) {
 		RedirectURI:     testRedirectURI,
 		SessionDuration: testSessionDuration,
 	}
-	if !app.Valid(nil) {
+	if err := app.Valid(nil); err != nil {
 		t.Errorf("expected valid app data")
 	}
 	// test app name
 	app.Name = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
-	if app.Valid(nil) {
+	if err := app.Valid(nil); err == nil {
 		t.Errorf("expected invalid app data")
 	}
 	app.Name = "no"
-	if app.Valid(nil) {
+	if err := app.Valid(nil); err == nil {
 		t.Errorf("expected invalid app data")
 	}
 	app.Name = testAppName
 	// test redirect URI
 	app.RedirectURI = "https://example.com/login?app=lorem_ipsum_dolor_sit_amet_consectetur_adipiscing_elit_sed_do_eiusmod_tempor_incididunt_ut_labore_et_dolore_magna_aliqua"
-	if app.Valid(nil) {
+	if err := app.Valid(nil); err == nil {
 		t.Errorf("expected invalid app data")
 	}
 	app.RedirectURI = "no_url"
-	if app.Valid(nil) {
+	if err := app.Valid(nil); err == nil {
 		t.Errorf("expected invalid app data")
 	}
 	app.RedirectURI = testRedirectURI
 	// test session duration
 	app.SessionDuration = minDuration - 1
-	if app.Valid(nil) {
+	if err := app.Valid(nil); err == nil {
 		t.Errorf("expected invalid app data")
 	}
 	app.SessionDuration = maxDuration + 1
-	if app.Valid(nil) {
+	if err := app.Valid(nil); err == nil {
 		t.Errorf("expected invalid app data")
 	}
 	var nilApp *App
-	if nilApp.Valid(nil) {
+	if err := nilApp.Valid(nil); err == nil {
 		t.Errorf("expected invalid app data")
 	}
 	app.AppSecretHash = testAppSecret.Hash()
 	servicePart := []byte("invalid-service-secret")
 	appPart := []byte("invalid-app-secret")
 	invalidSecret := new(Secret).SetParts(servicePart, appPart)
-	if app.Valid(invalidSecret.Hash()) {
+	if err := app.Valid(invalidSecret.Hash()); err == nil {
 		t.Errorf("expected invalid app data")
 	}
 }

@@ -1,33 +1,33 @@
 package email
 
-import "github.com/simpleauthlink/authapi/internal"
+import "go.k7z7z.cc/x/errors"
 
 var (
 	// ErrInvalidConfig is the error returned when the configuration is invalid.
-	ErrInvalidConfig = internal.NewErr("invalid configuration")
-	// ErrInitQueue is the error returned when the queue cannot be initialized.
-	ErrInitQueue = internal.NewErr("error initializing the queue")
+	ErrInvalidConfig = errors.New("invalid configuration")
 	// ErrInvalidEmail is the error returned when the email is invalid.
-	ErrInvalidEmail = internal.NewErr("invalid email")
+	ErrInvalidEmail = errors.New("invalid email")
 	// ErrInvalidTemplate is the error returned when the template is invalid.
-	ErrInvalidTemplate = internal.NewErr("invalid template")
+	ErrInvalidTemplate = errors.New("invalid template")
 	// ErrSendEmail is the error returned when the email cannot be sent.
-	ErrSendEmail = internal.NewErr("error sending email")
+	ErrSendEmail = errors.New("error sending email")
 	// ErrComposeEmail is the error returned when the email cannot be composed.
-	ErrComposeEmail = internal.NewErr("error composing email")
+	ErrComposeEmail = errors.New("error composing email")
+	// ErrCreatePart is the error returned when an email part cannot be written.
+	ErrCreatePart = errors.New("error creating email part")
 	// ErrParseAddress is the error returned when the email address cannot
 	// be parsed.
-	ErrParseAddress = internal.NewErr("error parsing email address")
+	ErrParseAddress = errors.New("error parsing email address")
 	// ErrSetBoundary is the error returned when the boundary cannot be set
 	// when a multipart email is composed.
-	ErrSetBoundary = internal.NewErr("error setting boundary")
-	// ErrWriteHTMLBody is the error returned when the email plain body cannot
+	ErrSetBoundary = errors.New("error setting boundary")
+	// ErrWriteBody is the error returned when the email plain body cannot
 	// be written.
-	ErrWriteBody = internal.NewErr("error writing email plain body")
+	ErrWriteBody = errors.New("error writing email plain body")
 	// ErrWriteHTMLBody is the error returned when the email HTML body cannot
 	// be written.
-	ErrWriteHTMLBody = internal.NewErr("error writing email html body")
+	ErrWriteHTMLBody = errors.New("error writing email html body")
 	// ErrCloseEmailWriter is the error returned when the email writer cannot
 	// be closed after composing the email.
-	ErrCloseEmailWriter = internal.NewErr("error closing email writer")
+	ErrCloseEmailWriter = errors.New("error closing email writer")
 )

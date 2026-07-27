@@ -2,83 +2,85 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"log"
+	"os"
 
 	"github.com/simpleauthlink/authapi/api"
-	"github.com/simpleauthlink/authapi/cmd"
-	"github.com/simpleauthlink/authapi/internal/osflag"
+	"github.com/simpleauthlink/authapi/notification"
 	"github.com/simpleauthlink/authapi/notification/email"
+	"go.k7z7z.cc/x/flag"
+	"go.k7z7z.cc/x/log"
+	"go.k7z7z.cc/x/proc"
 )
 
-type config struct {
-	host      string
-	port      int
-	emailAddr string
-	emailUser string
-	emailPass string
-	emailHost string
-	emailPort int
-	secret    string
-}
-
-func (c *config) String() string {
-	return fmt.Sprintf(`{"server": "%s:%d", "smtpServer": "%s:%d", "smtpAuth": "%s:%s", "secret": "%s"}`,
-		c.host, c.port, c.emailHost, c.emailPort, c.emailAddr, c.emailPass, c.secret)
+type Config struct {
+	email.EmailConfig
+	APIHost                  string `env:"HOST" flag:"host" sflag:"h" usage:"service host"`
+	APIPort                  int    `env:"PORT" flag:"port" sflag:"p" usage:"service port"`
+	Secret                   string `env:"SECRET" flag:"secret" sflag:"s" usage:"secret used to generate the tokens"`
+	NotificationQueueSize    int    `env:"NOTIFICATION_QUEUE_SIZE" flag:"queue-size" usage:"size of the notification queue"`
+	NotificationQueueWorkers int    `env:"NOTIFICATION_QUEUE_WORKERS" flag:"queue-workers" usage:"number of workers of the notification queue"`
 }
 
 func main() {
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	c := new(config)
-	// get config from flags
-	osflag.StringVar(&c.host, cmd.HostEnv, cmd.HostFlag, cmd.DefaultHost, cmd.HostFlagDesc, false)
-	osflag.IntVar(&c.port, cmd.PortEnv, cmd.PortFlag, cmd.DefaultPort, cmd.HostFlagDesc, false)
-	osflag.StringVar(&c.emailAddr, cmd.EmailAddrEnv, cmd.EmailAddrFlag, cmd.DefaultEmailAddr, cmd.EmailAddrFlagDesc, true)
-	osflag.StringVar(&c.emailUser, cmd.EmailUserEnv, cmd.EmailUserFlag, cmd.DefaultEmailUser, cmd.EmailUserFlagDesc, true)
-	osflag.StringVar(&c.emailPass, cmd.EmailPassEnv, cmd.EmailPassFlag, cmd.DefaultEmailPass, cmd.EmailPassFlagDesc, true)
-	osflag.StringVar(&c.emailHost, cmd.EmailHostEnv, cmd.EmailHostFlag, cmd.DefaultEmailHost, cmd.EmailHostFlagDesc, true)
-	osflag.IntVar(&c.emailPort, cmd.EmailPortEnv, cmd.EmailPortFlag, cmd.DefaultEmailPort, cmd.EmailPortFlagDesc, false)
-	osflag.StringVar(&c.secret, cmd.SecretEnv, cmd.SecretFlag, cmd.DefaultSecret, cmd.SecretFlagDesc, true)
-	if err := osflag.Parse(nil); err != nil {
-		log.Fatalln("ERR: error parsing flags:", err)
+	log.SetLevel(log.DebugLevel)
+	c := &Config{
+		APIHost: "0.0.0.0",
+		APIPort: 8080,
+		EmailConfig: email.EmailConfig{
+			SMTPPort: 587,
+		},
+		NotificationQueueSize:    1000,
+		NotificationQueueWorkers: 10,
 	}
-	if !osflag.Parsed() {
-		log.Fatalln("ERR: error parsing flags:", "flags not parsed")
-		osflag.PrintDefaults()
-	}
-	log.Println("INF: starting service with config:", c.String())
-	// create email queue
-	emailQueue, err := email.NewEmailQueue(context.Background(), &email.EmailConfig{
-		FromName:     "SimpleAuthLink",
-		FromAddress:  c.emailAddr,
-		SMTPUsername: c.emailUser,
-		SMTPPassword: c.emailPass,
-		SMTPServer:   c.emailHost,
-		SMTPPort:     c.emailPort,
-	})
+	envvars, err := proc.EnvvarsFromFile(".env")
 	if err != nil {
-		log.Fatalln("WRN: something occurs during email queue creation:", err)
+		log.Errw("error loading env file", "err", err)
+		return
+	}
+	if err := proc.UnmarshalEnvvars(envvars, c); err != nil {
+		log.Errw("error processing envvars", "err", err)
+		return
+	}
+	if err := flag.UnmarshalArgs(os.Args[1:], c); err != nil {
+		log.Errw("error loading flags", "err", err)
+		return
+	}
+
+	log.Infow("starting service with config:",
+		"api-host", c.APIHost,
+		"api-port", c.APIPort,
+		"queue-size", c.NotificationQueueSize,
+		"queue-workers", c.NotificationQueueWorkers)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	// create notification queue
+	notificationQueue, err := notification.NewQueue(ctx, c.NotificationQueueSize, &c.EmailConfig)
+	if err != nil {
+		log.Errw("error creating notification queue", "err", err)
+		return
 	}
 	// start the email queue and defer to stop it
-	emailQueue.Start()
-	defer emailQueue.Stop()
-	// create the service
-	service, err := api.New(context.Background(), &api.Config{
-		Server:     c.host,
-		ServerPort: c.port,
-		Secret:     c.secret,
-	}, emailQueue)
+	notificationQueue.Start(c.NotificationQueueWorkers)
+	defer notificationQueue.Stop()
+	// create the apiService
+	apiService, err := api.New(ctx, &api.Config{
+		Server:     c.APIHost,
+		ServerPort: c.APIPort,
+		Secret:     c.Secret,
+	}, notificationQueue)
 	if err != nil {
-		log.Fatalln("ERR: error creating service:", err)
+		log.Errw("error creating service", "err", err)
+		return
 	}
-	// start the service in background
-	go func() {
-		if err := service.Start(); err != nil {
-			log.Fatalln("ERR: error running service:", err)
-		}
-	}()
-	// wait for the service to finish
-	if err := service.WaitToShutdown(); err != nil {
-		log.Fatalln("ERR: error waiting for service to finish:", err)
+	// start the service and wait for it to finish
+	if err = new(proc.Shutdown).WithInterrupt().WithRecovery().WithRun(func(ctx context.Context) error {
+		return apiService.Start()
+	}).WithCallback(func(_ context.Context) error {
+		return apiService.Stop()
+	}).Wait(ctx); err != nil {
+		log.Errw("error during shutdown", "err", err)
+		return
 	}
+	log.Info("HTTP server stopped, exiting...")
 }

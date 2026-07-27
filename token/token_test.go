@@ -140,7 +140,7 @@ func Test_partsToken(t *testing.T) {
 	token = token.SetExpiration(*exp)
 	rawExp, _, ok := token.parts()
 	if !ok {
-		t.Errorf("expected false, got true")
+		t.Errorf("expected true, got false")
 	}
 	if !bytes.Equal(rawExp, exp.Marshal()) {
 		t.Errorf("expected %v, got %v", exp.Marshal(), rawExp)

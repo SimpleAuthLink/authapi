@@ -1,10 +1,11 @@
 package token
 
-import "fmt"
+import "go.k7z7z.cc/x/errors"
 
 var (
-	ErrInvalidAppID           = fmt.Errorf("invalid app ID")
-	ErrInvalidAppName         = fmt.Errorf("invalid app name")
-	ErrInvalidRedirectURI     = fmt.Errorf("invalid redirect URI")
-	ErrInvalidSessionDuration = fmt.Errorf("invalid session duration")
+	ErrInvalidApp             = errors.New("invalid app")
+	ErrInvalidAppName         = errors.New("invalid app name")
+	ErrInvalidRedirectURI     = errors.New("invalid redirect URI")
+	ErrInvalidSessionDuration = errors.New("invalid session duration")
+	ErrInvalidSecret          = errors.New("invalid secret")
 )

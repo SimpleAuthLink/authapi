@@ -3,25 +3,21 @@ package api
 import (
 	"net/http"
 
-	"github.com/simpleauthlink/authapi/api/io"
+	"go.k7z7z.cc/x/net/http/io"
 )
 
 var (
 	// Decode data errors
-	DecodeAppIDRequestErr       = io.NewAPIError(1001, http.StatusBadRequest).With("could not decode app id request")
-	DecodeTokenRequestErr       = io.NewAPIError(1002, http.StatusBadRequest).With("could not decode token request")
-	DecodeTokenStatusRequestErr = io.NewAPIError(1003, http.StatusBadRequest).With("could not decode token status request")
-	// Encode data errors
-	EncodeAppIDResponseErr       = io.NewAPIError(1010, http.StatusInternalServerError).With("could not encode app id response")
-	EncodeTokenStatusResponseErr = io.NewAPIError(1011, http.StatusInternalServerError).With("could not encode token status response")
+	ErrDecodeAppIDRequest       = io.NewAPIError(4001, http.StatusBadRequest).With("could not decode app id request")
+	ErrDecodeTokenRequest       = io.NewAPIError(4002, http.StatusBadRequest).With("could not decode token request")
+	ErrDecodeTokenStatusRequest = io.NewAPIError(4003, http.StatusBadRequest).With("could not decode token status request")
 	// Bad request errors
-	InvalidAppHeadersErr     = io.NewAPIError(1020, http.StatusBadRequest).With("invalid app headers")
-	InvalidAppIDErr          = io.NewAPIError(1021, http.StatusBadRequest).With("invalid app id")
-	InvalidAppSecretErr      = io.NewAPIError(1022, http.StatusBadRequest).With("invalid app secret")
-	InvalidDemoEmailInboxErr = io.NewAPIError(1023, http.StatusBadRequest).With("invalid demo email inbox")
+	ErrInvalidAppHeaders          = io.NewAPIError(4004, http.StatusBadRequest).With("invalid app headers")
+	ErrInvalidAppID               = io.NewAPIError(4005, http.StatusBadRequest).With("invalid app id")
+	ErrInvalidAppSecret           = io.NewAPIError(4006, http.StatusBadRequest).With("invalid app secret")
+	ErrInvalidNotificationChannel = io.NewAPIError(4007, http.StatusBadRequest).With("invalid notification channel identified")
 	// Internal errors
-	GenerateTokenErr = io.NewAPIError(1030, http.StatusInternalServerError).With("could not generate token")
-	GenerateEmailErr = io.NewAPIError(1031, http.StatusInternalServerError).With("could not generate email")
-	SendEmailErr     = io.NewAPIError(1032, http.StatusInternalServerError).With("could not send email")
-	InternalErr      = io.NewAPIError(1033, http.StatusInternalServerError).With("internal server error")
+	ErrGenerateToken        = io.NewAPIError(5001, http.StatusInternalServerError).With("could not generate token")
+	ErrGenerateNotification = io.NewAPIError(5002, http.StatusInternalServerError).With("could not generate notification")
+	ErrNotificationChannel  = io.NewAPIError(5003, http.StatusInternalServerError).With("could not send notification")
 )

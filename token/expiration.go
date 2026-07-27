@@ -3,7 +3,7 @@ package token
 import (
 	"time"
 
-	"github.com/simpleauthlink/authapi/internal/base64url"
+	"go.k7z7z.cc/x/encoding/base64url"
 )
 
 // Expiration represents a time when a token expires. It is a wrapper around
@@ -118,7 +118,7 @@ func (exp *Expiration) SetBytes(data []byte) *Expiration {
 // invalid, nil is returned.
 func (exp *Expiration) Marshal() []byte {
 	bExp := exp.Bytes()
-	if len(bExp) == 0 || bExp[0] == 0 {
+	if len(bExp) == 0 {
 		return nil
 	}
 	return base64url.RawEncode(bExp)

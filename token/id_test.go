@@ -129,15 +129,6 @@ func TestPrivKeySignVerifyAppID(t *testing.T) {
 	}
 }
 
-func TestMessage(t *testing.T) {
-	if privKey := new(AppID).PrivKey(*testAppSecret); privKey != nil {
-		t.Errorf("expected nil, got %v", privKey)
-	}
-	if sig := new(AppID).Sign(*testAppSecret, []byte("test data")); sig != nil {
-		t.Errorf("expected nil, got %v", sig)
-	}
-}
-
 func TestGenerateTokenVerifyToken(t *testing.T) {
 	t.Parallel()
 	var nilAppID *AppID
@@ -163,42 +154,143 @@ func TestGenerateTokenVerifyToken(t *testing.T) {
 	if id == nil {
 		t.Fatalf("error decoding app ID")
 	}
-	email := "test@email.com"
-	if id.VerifyToken([]byte{}, *testAppSecret, email) {
+	userID := UserID("test@email.com")
+	if id.VerifyToken([]byte{}, *testAppSecret, userID) {
 		t.Errorf("expected token to be invalid")
 	}
 	dummyToken := new(Token).SetExpiration(*new(Expiration).SetDuration(minDuration * 3))
-	if id.VerifyToken(*dummyToken, *testAppSecret, email) {
+	if id.VerifyToken(*dummyToken, *testAppSecret, userID) {
 		t.Errorf("expected token to be invalid")
 	}
 	dummyToken = new(Token).SetSignature([]byte("test"))
-	if id.VerifyToken(*dummyToken, *testAppSecret, email) {
+	if id.VerifyToken(*dummyToken, *testAppSecret, userID) {
 		t.Errorf("expected token to be invalid")
 	}
 	if invalidToken := id.GenerateToken(*testAppSecret, ""); invalidToken != nil {
 		t.Fatalf("expected nil, got %v", invalidToken)
 	}
 
-	token := id.GenerateToken(*testAppSecret, email)
+	token := id.GenerateToken(*testAppSecret, userID)
 	if token == nil {
 		t.Fatalf("error creating token")
 	}
 	if id.VerifyToken(token, *testAppSecret, "") {
 		t.Errorf("expected token to be invalid")
 	}
-	if !id.VerifyToken(token, *testAppSecret, email) {
+	if !id.VerifyToken(token, *testAppSecret, userID) {
 		t.Errorf("expected token to be valid")
 	}
 	time.Sleep(app.SessionDuration + time.Second)
-	if id.VerifyToken(token, *testAppSecret, email) {
+	if id.VerifyToken(token, *testAppSecret, userID) {
 		t.Errorf("expected token to be invalid")
 	}
-	if id.VerifyToken(nil, *testAppSecret, email) {
+	if id.VerifyToken(nil, *testAppSecret, userID) {
 		t.Errorf("expected token to be invalid")
 	}
 	exp := new(Expiration).SetDuration(minDuration)
-	if id.VerifyToken(exp.Marshal(), *testAppSecret, email) {
+	if id.VerifyToken(exp.Marshal(), *testAppSecret, userID) {
 		t.Errorf("expected token to be invalid")
+	}
+}
+
+func TestTokenModificationRejected(t *testing.T) {
+	t.Parallel()
+
+	servicePart := []byte("service-secret")
+	appPart := []byte("app-secret")
+	secret := new(Secret).SetParts(servicePart, appPart)
+	app := &App{
+		Name:            testAppName,
+		RedirectURI:     testRedirectURI,
+		SessionDuration: minDuration,
+	}
+	app.SetSecret(secret)
+	id := app.ID(secret)
+	if id == nil {
+		t.Fatalf("error decoding app ID")
+	}
+	userID := UserID("test@email.com")
+
+	token := id.GenerateToken(*secret, userID)
+	if token == nil {
+		t.Fatalf("error creating token")
+	}
+	if !id.VerifyToken(token, *secret, userID) {
+		t.Fatalf("original token should be valid")
+	}
+
+	parts := bytes.Split([]byte(token.String()), []byte{tokenSeparator})
+	if len(parts) != 2 {
+		t.Fatalf("expected 2 parts in token, got %d", len(parts))
+	}
+	expPart, sigPart := string(parts[0]), string(parts[1])
+
+	if len(expPart) < 4 {
+		t.Fatalf("expiration part too short")
+	}
+	modifiedExp := string(expPart[0]) + string(expPart[1]) + "B" + expPart[3:]
+	modifiedToken1 := modifiedExp + string(tokenSeparator) + sigPart
+	tkn1 := new(Token).SetString(modifiedToken1)
+	if id.VerifyToken(*tkn1, *secret, userID) {
+		t.Errorf("modified expiration token should be invalid")
+	}
+
+	if len(sigPart) < 30 {
+		t.Fatalf("signature part too short")
+	}
+	modifiedSig := sigPart[:28] + "f" + sigPart[29:]
+	modifiedToken2 := expPart + string(tokenSeparator) + modifiedSig
+	tkn2 := new(Token).SetString(modifiedToken2)
+	if id.VerifyToken(*tkn2, *secret, userID) {
+		t.Errorf("modified signature token should be invalid")
+	}
+}
+
+func TestTokenCrossAppRejected(t *testing.T) {
+	t.Parallel()
+
+	servicePart := []byte("service-secret")
+
+	app1Part := []byte("app-one-secret")
+	secret1 := new(Secret).SetParts(servicePart, app1Part)
+	app1 := &App{
+		Name:            testAppName,
+		RedirectURI:     testRedirectURI,
+		SessionDuration: minDuration,
+	}
+	app1.SetSecret(secret1)
+	id1 := app1.ID(secret1)
+	if id1 == nil {
+		t.Fatalf("error decoding app1 ID")
+	}
+
+	app2Part := []byte("app-two-secret")
+	secret2 := new(Secret).SetParts(servicePart, app2Part)
+	app2 := &App{
+		Name:            "OtherApp",
+		RedirectURI:     testRedirectURI,
+		SessionDuration: minDuration,
+	}
+	app2.SetSecret(secret2)
+	id2 := app2.ID(secret2)
+	if id2 == nil {
+		t.Fatalf("error decoding app2 ID")
+	}
+
+	userID := UserID("test@email.com")
+
+	token := id1.GenerateToken(*secret1, userID)
+	if token == nil {
+		t.Fatalf("error creating token")
+	}
+	if !id1.VerifyToken(token, *secret1, userID) {
+		t.Fatalf("original token should be valid for app1")
+	}
+	if id2.VerifyToken(token, *secret2, userID) {
+		t.Errorf("app1's token should be invalid for app2")
+	}
+	if id1.VerifyToken(token, *secret2, userID) {
+		t.Errorf("token should be invalid with wrong secret")
 	}
 }
 

@@ -2,8 +2,6 @@ package email
 
 import (
 	"testing"
-
-	"github.com/simpleauthlink/authapi/notification"
 )
 
 var testTemplate = &EmailTemplate{
@@ -22,7 +20,7 @@ func TestCompose(t *testing.T) {
 		Title:   "Test Title",
 		Content: "Test Content",
 	}
-	email, err := testTemplate.Compose(notification.NotificationParams{
+	email, err := testTemplate.Compose(EmailParams{
 		To:      testReceiver,
 		Subject: testSubject,
 	}, data)
@@ -44,21 +42,21 @@ func TestCompose(t *testing.T) {
 		t.Fatalf("got %v, want %v", string(email.PlainBody), expectedPlain)
 	}
 	// no subject
-	if _, err := testTemplate.Compose(notification.NotificationParams{
+	if _, err := testTemplate.Compose(EmailParams{
 		To:      testReceiver,
 		Subject: "",
 	}, data); err == nil {
 		t.Fatalf("expected error, got nil")
 	}
 	// no to address
-	if _, err := testTemplate.Compose(notification.NotificationParams{
+	if _, err := testTemplate.Compose(EmailParams{
 		To:      "",
 		Subject: testSubject,
 	}, data); err == nil {
 		t.Fatalf("expected error, got nil")
 	}
 	// bad to address
-	if _, err := testTemplate.Compose(notification.NotificationParams{
+	if _, err := testTemplate.Compose(EmailParams{
 		To:      "bad email",
 		Subject: testSubject,
 	}, data); err == nil {
@@ -66,7 +64,7 @@ func TestCompose(t *testing.T) {
 	}
 	// invalid template
 	emptyTemplate := &EmailTemplate{}
-	validParams := notification.NotificationParams{
+	validParams := EmailParams{
 		To:      testReceiver,
 		Subject: testSubject,
 	}
@@ -149,4 +147,36 @@ func Test_composeHTML(t *testing.T) {
 	if body != nil {
 		t.Fatalf("expected nil, got %v", string(body))
 	}
+}
+
+func TestComposeWithBrokenTemplate(t *testing.T) {
+	validParams := EmailParams{
+		To:      testReceiver,
+		Subject: testSubject,
+	}
+	data := testData{Title: "T", Content: "C"}
+
+	// Broken HTML template: Parse error
+	t.Run("broken HTML template", func(t *testing.T) {
+		bad := &EmailTemplate{
+			HTML:  "{{.Title}", // missing closing brace
+			Plain: "OK {{.Title}}",
+		}
+		_, err := bad.Compose(validParams, data)
+		if err == nil {
+			t.Error("expected parse error for broken HTML template")
+		}
+	})
+
+	// Broken Plain template: Parse error
+	t.Run("broken Plain template", func(t *testing.T) {
+		bad := &EmailTemplate{
+			HTML:  "OK {{.Title}}",
+			Plain: "{{.Title}", // missing closing brace
+		}
+		_, err := bad.Compose(validParams, data)
+		if err == nil {
+			t.Error("expected parse error for broken Plain template")
+		}
+	})
 }

@@ -4,8 +4,8 @@ import "crypto/sha256"
 
 // secretHashSize is the size of the secret hash. It is used to determine
 // the size of the secret when it is hashed. The hash is created by hashing
-// the secret to a sha256 size. The hash is used to sign and verify tokens.
-// The hash is also used to create the app ID and it is part of it.
+// the secret to a sha256 size, but then it is truncated to 12 bytes.
+// The hash is used to sign and verify tokens, and to create the app ID and it is part of it.
 const secretHashSize = 12
 
 // Secret represents a secret that is used to sign and verify tokens. It is

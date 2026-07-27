@@ -2,18 +2,18 @@ package email
 
 import (
 	"context"
+	"os"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/simpleauthlink/authapi/internal/fakesmtpserver"
 	"github.com/simpleauthlink/authapi/notification"
+	xnet "go.k7z7z.cc/x/net"
+	"go.k7z7z.cc/x/net/smtp/testsmtp"
 )
 
 const (
 	testServerAddr = "127.0.0.1"
-	testServerPort = 2525
-	testSenderName = "Test Sender"
 	testSender     = "sender@testmail.com"
 	testReceiver   = "receiver@testmail.com"
 	testSubject    = "Test email"
@@ -21,25 +21,32 @@ const (
 	testHTMLBody   = "<h1>This is a test email</h1>"
 )
 
-var inboxChan = make(chan string, 1)
+var (
+	testServerPort int
+	inboxChan      = make(chan string, 1)
+)
 
 func TestMain(m *testing.M) {
+	var err error
+	if testServerPort, err = xnet.SafeTestPort(); err != nil {
+		panic(err)
+	}
 	defer close(inboxChan)
 	// create context with cancel
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	// start test SMTP server to receive the email
-	testSrv := fakesmtpserver.NewServer(testServerAddr, testServerPort, inboxChan)
+	testSrv := testsmtp.NewServer(testServerAddr, testServerPort, inboxChan)
 	if err := testSrv.Start(ctx); err != nil {
 		panic(err)
 	}
 	defer testSrv.Stop()
-	m.Run()
+	os.Exit(m.Run())
 }
 
 func TestValidEmail(t *testing.T) {
-	if !(&notification.Notification{
-		Params: notification.NotificationParams{
+	if !(&EmailNotification{
+		Params: EmailParams{
 			To:      testReceiver,
 			Subject: testSubject,
 		},
@@ -48,8 +55,8 @@ func TestValidEmail(t *testing.T) {
 	}).Valid() {
 		t.Error("expected email to be valid")
 	}
-	if !(&notification.Notification{
-		Params: notification.NotificationParams{
+	if !(&EmailNotification{
+		Params: EmailParams{
 			To:      testReceiver,
 			Subject: testSubject,
 		},
@@ -58,8 +65,8 @@ func TestValidEmail(t *testing.T) {
 	}).Valid() {
 		t.Error("expected email to be valid")
 	}
-	if (&notification.Notification{
-		Params: notification.NotificationParams{
+	if (&EmailNotification{
+		Params: EmailParams{
 			To:      testReceiver,
 			Subject: "",
 		},
@@ -68,8 +75,8 @@ func TestValidEmail(t *testing.T) {
 	}).Valid() {
 		t.Error("expected email to be invalid")
 	}
-	if (&notification.Notification{
-		Params: notification.NotificationParams{
+	if (&EmailNotification{
+		Params: EmailParams{
 			To:      "",
 			Subject: testSubject,
 		},
@@ -78,8 +85,8 @@ func TestValidEmail(t *testing.T) {
 	}).Valid() {
 		t.Error("expected email to be invalid")
 	}
-	if (&notification.Notification{
-		Params: notification.NotificationParams{
+	if (&EmailNotification{
+		Params: EmailParams{
 			To:      "invalidEmail",
 			Subject: testSubject,
 		},
@@ -88,7 +95,7 @@ func TestValidEmail(t *testing.T) {
 	}).Valid() {
 		t.Error("expected email to be invalid")
 	}
-	if (&notification.Notification{}).Valid() {
+	if (&EmailNotification{}).Valid() {
 		t.Error("expected email to be invalid")
 	}
 }
@@ -97,7 +104,6 @@ func TestValidConfig(t *testing.T) {
 	if !(&EmailConfig{
 		SMTPServer:  testServerAddr,
 		SMTPPort:    testServerPort,
-		FromName:    testSenderName,
 		FromAddress: testSender,
 	}).Valid() {
 		t.Error("expected config to be valid")
@@ -105,7 +111,6 @@ func TestValidConfig(t *testing.T) {
 	if (&EmailConfig{
 		SMTPServer:  "",
 		SMTPPort:    testServerPort,
-		FromName:    testSenderName,
 		FromAddress: testSender,
 	}).Valid() {
 		t.Error("expected config to be invalid")
@@ -113,7 +118,6 @@ func TestValidConfig(t *testing.T) {
 	if (&EmailConfig{
 		SMTPServer:  testServerAddr,
 		SMTPPort:    0,
-		FromName:    testSenderName,
 		FromAddress: testSender,
 	}).Valid() {
 		t.Error("expected config to be invalid")
@@ -121,15 +125,6 @@ func TestValidConfig(t *testing.T) {
 	if (&EmailConfig{
 		SMTPServer:  testServerAddr,
 		SMTPPort:    testServerPort,
-		FromName:    "",
-		FromAddress: testSender,
-	}).Valid() {
-		t.Error("expected config to be invalid")
-	}
-	if (&EmailConfig{
-		SMTPServer:  testServerAddr,
-		SMTPPort:    testServerPort,
-		FromName:    testSenderName,
 		FromAddress: "",
 	}).Valid() {
 		t.Error("expected config to be invalid")
@@ -138,25 +133,9 @@ func TestValidConfig(t *testing.T) {
 
 func TestNewEmailQueue(t *testing.T) {
 	// create email queue with valid config
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	eq, err := NewEmailQueue(ctx, &EmailConfig{
-		SMTPServer:  testServerAddr,
-		SMTPPort:    testServerPort,
-		FromName:    testSenderName,
-		FromAddress: testSender,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if eq == nil {
-		t.Error("expected email queue to be created")
-	}
-	// create email queue with auth
-	eq, err = NewEmailQueue(ctx, &EmailConfig{
+	eq, err := notification.NewQueue(t.Context(), 10, &EmailConfig{
 		SMTPServer:   testServerAddr,
 		SMTPPort:     testServerPort,
-		FromName:     testSenderName,
 		FromAddress:  testSender,
 		SMTPUsername: "username",
 		SMTPPassword: "password",
@@ -168,10 +147,9 @@ func TestNewEmailQueue(t *testing.T) {
 		t.Error("expected email queue to be created")
 	}
 	// create email queue with invalid config
-	eq, err = NewEmailQueue(ctx, &EmailConfig{
+	eq, err = notification.NewQueue(t.Context(), 10, &EmailConfig{
 		SMTPServer:  "",
 		SMTPPort:    testServerPort,
-		FromName:    testSenderName,
 		FromAddress: testSender,
 	})
 	if err == nil {
@@ -184,26 +162,27 @@ func TestNewEmailQueue(t *testing.T) {
 
 func TestSendEmail(t *testing.T) {
 	// create email queue but don't start it
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	eq, err := NewEmailQueue(ctx, &EmailConfig{
+	config := &EmailConfig{
 		SMTPServer:  testServerAddr,
 		SMTPPort:    testServerPort,
-		FromName:    testSenderName,
 		FromAddress: testSender,
-	})
+	}
+	eq, err := notification.NewQueue(t.Context(), 10, config)
 	if err != nil {
 		t.Fatal(err)
 	}
+	eq.Start(1)
+	defer eq.Stop()
 	// send email
-	if err := eq.Send(notification.Notification{
-		Params: notification.NotificationParams{
+	emailNotification := &EmailNotification{
+		Params: EmailParams{
 			To:      testReceiver,
 			Subject: testSubject,
 		},
 		Body:      []byte(testHTMLBody),
 		PlainBody: []byte(testBody),
-	}); err != nil {
+	}
+	if err := emailNotification.Send(config); err != nil {
 		t.Fatal(err)
 	}
 	// check if the email was received
@@ -221,58 +200,59 @@ func TestSendEmail(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Error("timed out waiting for the email to be received")
 	}
+	invalidEmail := &EmailNotification{}
 	// try to send invalid email
-	if err := eq.Send(notification.Notification{}); err == nil {
+	if err := invalidEmail.Send(config); err == nil {
 		t.Error("expected error sending invalid email")
 	}
 	// try to compose a invalid email
-	if body, err := eq.composeBody(notification.Notification{}); err == nil {
+	if body, err := invalidEmail.composeBody(config); err == nil {
 		t.Error("expected error composing invalid email")
 	} else if body != nil {
 		t.Error("expected body to be nil")
 	}
 	// try to send email to an invalid SMTP server
-	badEq, err := NewEmailQueue(ctx, &EmailConfig{
-		SMTPServer:  testServerAddr,
-		SMTPPort:    8080,
-		FromName:    testSenderName,
-		FromAddress: testSender,
-	})
+	badConf := &EmailConfig{
+		SMTPServer:   testServerAddr,
+		SMTPPort:     8080,
+		FromAddress:  testSender,
+		SMTPUsername: "user",
+		SMTPPassword: "pass",
+	}
+	badEq, err := notification.NewQueue(t.Context(), 10, badConf)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := badEq.Send(notification.Notification{
-		Params: notification.NotificationParams{
+	badEq.Start(1)
+	defer badEq.Stop()
+	otherNotification := &EmailNotification{
+		Params: EmailParams{
 			To:      testReceiver,
 			Subject: testSubject,
 		},
 		Body:      nil,
 		PlainBody: []byte(testBody),
-	}); err == nil {
+	}
+	if err := otherNotification.Send(badConf); err == nil {
 		t.Error("expected error sending email")
 	}
 }
 
 func TestPushSendEmail(t *testing.T) {
 	// create email queue and start it
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	errCh := make(chan error, 1)
-	eq, err := NewEmailQueue(ctx, &EmailConfig{
+	eq, err := notification.NewQueue(t.Context(), 10, &EmailConfig{
 		SMTPServer:  testServerAddr,
 		SMTPPort:    testServerPort,
-		FromName:    testSenderName,
 		FromAddress: testSender,
-		ErrorCh:     errCh,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	eq.Start()
+	eq.Start(1)
 	defer eq.Stop()
 	// push email
-	if err := eq.Push(notification.Notification{
-		Params: notification.NotificationParams{
+	if err := eq.Push(&EmailNotification{
+		Params: EmailParams{
 			To:      testReceiver,
 			Subject: testSubject,
 		},
@@ -293,10 +273,19 @@ func TestPushSendEmail(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Error("timed out waiting for the email to be received")
 	}
-	// sleep to pop nil email
-	time.Sleep(2 * time.Second)
 	// push invalid email
-	if err := eq.Push(notification.Notification{}); err == nil {
+	if err := eq.Push(&EmailNotification{}); err == nil {
 		t.Error("expected error pushing invalid email")
+	}
+}
+
+func TestSendWrongConfigType(t *testing.T) {
+	n := &EmailNotification{
+		Params:    EmailParams{To: testReceiver, Subject: testSubject},
+		PlainBody: []byte(testBody),
+	}
+	// Pass a non-EmailConfig to trigger the type assertion failure
+	if err := n.Send(nil); err != ErrInvalidConfig {
+		t.Errorf("expected ErrInvalidConfig, got %v", err)
 	}
 }
