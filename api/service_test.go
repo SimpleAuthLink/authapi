@@ -166,6 +166,13 @@ func TestServiceStop(t *testing.T) {
 			log.Fatal(err)
 		}
 	}()
+	// wait for the server to be up before pinging
+	for range 10 {
+		if tempSrv.Ping() {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
 	// verify server is up
 	if !tempSrv.Ping() {
 		t.Error("server should be reachable after start")

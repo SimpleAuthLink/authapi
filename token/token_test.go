@@ -17,19 +17,25 @@ func TestStringSetStringToken(t *testing.T) {
 		t.Errorf("expected empty string, got %s", token.String())
 	}
 	exp := new(Expiration).SetDuration(minDuration * 2)
-	expected := string(exp.Marshal()) + string(tokenSeparator)
+	expected := string(exp.Marshal()) + string(tokenSeparator) + string(tokenSeparator)
 	token.SetString(expected)
 	if token.String() != expected {
 		t.Errorf("expected %s, got %s", expected, token.String())
 	}
 
-	expected = string(tokenSeparator) + "testSignature"
+	expected = string(tokenSeparator) + "testSignature" + string(tokenSeparator)
 	token.SetString(expected)
 	if token.String() != expected {
 		t.Errorf("expected %s, got %s", expected, token.String())
 	}
 
-	expected = string(exp.Marshal()) + string(tokenSeparator) + "testSignature"
+	expected = string(exp.Marshal()) + string(tokenSeparator) + "testSignature" + string(tokenSeparator)
+	token.SetString(expected)
+	if token.String() != expected {
+		t.Errorf("expected %s, got %s", expected, token.String())
+	}
+
+	expected = string(exp.Marshal()) + string(tokenSeparator) + "testSignature" + string(tokenSeparator) + "testEmail"
 	token.SetString(expected)
 	if token.String() != expected {
 		t.Errorf("expected %s, got %s", expected, token.String())
@@ -48,18 +54,28 @@ func TestBytesSetBytesToken(t *testing.T) {
 	}
 	exp := new(Expiration).SetDuration(minDuration * 2)
 	onlyExp := append(exp.Marshal(), tokenSeparator)
+	onlyExp = append(onlyExp, tokenSeparator)
 	token.SetBytes(onlyExp)
 	if !bytes.Equal(token.Bytes(), onlyExp) {
 		t.Errorf("expected %v, got %v", onlyExp, token.Bytes())
 	}
 
 	onlySign := append([]byte{tokenSeparator}, []byte("testSignature")...)
+	onlySign = append(onlySign, tokenSeparator)
 	token.SetBytes(onlySign)
 	if !bytes.Equal(token.Bytes(), onlySign) {
 		t.Errorf("expected %v, got %v", onlySign, token.Bytes())
 	}
 
+	onlyExpAndSign := append(append(exp.Marshal(), tokenSeparator), []byte("testSignature")...)
+	onlyExpAndSign = append(onlyExpAndSign, tokenSeparator)
+	token.SetBytes(onlyExpAndSign)
+	if !bytes.Equal(token.Bytes(), onlyExpAndSign) {
+		t.Errorf("expected %v, got %v", onlyExpAndSign, token.Bytes())
+	}
+
 	fullToken := append(append(exp.Marshal(), tokenSeparator), []byte("testSignature")...)
+	fullToken = append(append(fullToken, tokenSeparator), []byte("testEmail")...)
 	token.SetBytes(fullToken)
 	if !bytes.Equal(token.Bytes(), fullToken) {
 		t.Errorf("expected %v, got %v", fullToken, token.Bytes())
@@ -133,12 +149,12 @@ func TestSignatureSetSignatureToken(t *testing.T) {
 
 func Test_partsToken(t *testing.T) {
 	var token *Token
-	if _, _, ok := token.parts(); ok {
+	if _, _, _, ok := token.split(); ok {
 		t.Errorf("expected false, got true")
 	}
 	exp := new(Expiration).SetDuration(minDuration * 2)
 	token = token.SetExpiration(*exp)
-	rawExp, _, ok := token.parts()
+	rawExp, _, _, ok := token.split()
 	if !ok {
 		t.Errorf("expected true, got false")
 	}
@@ -146,7 +162,7 @@ func Test_partsToken(t *testing.T) {
 		t.Errorf("expected %v, got %v", exp.Marshal(), rawExp)
 	}
 	token.SetSignature([]byte("test"))
-	rawExp, sign, ok := token.parts()
+	rawExp, sign, _, ok := token.split()
 	if !ok {
 		t.Errorf("expected true, got false")
 	}

@@ -250,7 +250,6 @@ func TestRequestTokenAndStatusHandler(t *testing.T) {
 		},
 		request: &TokenStatusRequest{
 			Token: testToken.String(),
-			Email: testUserEmail,
 		},
 		response: &TokenStatusResponse{
 			Valid:      true,
@@ -260,8 +259,11 @@ func TestRequestTokenAndStatusHandler(t *testing.T) {
 
 	// invalid token tests
 	testTokenStr := testToken.String()
+	if !testToken.Valid() {
+		t.Fatal("valid token expected")
+	}
 	parts := bytes.Split([]byte(testTokenStr), []byte("."))
-	if len(parts) != 2 {
+	if len(parts) != 3 {
 		t.Fatalf("expected 2 token parts, got %d", len(parts))
 	}
 	expPart, sigPart := string(parts[0]), string(parts[1])
@@ -270,7 +272,6 @@ func TestRequestTokenAndStatusHandler(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			rawBody, _ := json.Marshal(&TokenStatusRequest{
 				Token: tokenStr,
-				Email: testUserEmail,
 			})
 			req, err := http.NewRequest(http.MethodPut,
 				testServerAPIURL+TokensPath, bytes.NewReader(rawBody))
@@ -356,7 +357,6 @@ func TestRequestTokenAndStatusHandler(t *testing.T) {
 		},
 		request: &TokenStatusRequest{
 			Token: testToken.String(),
-			Email: testUserEmail,
 		},
 		response: nil,
 		err:      ErrInvalidAppID,
@@ -371,7 +371,6 @@ func TestRequestTokenAndStatusHandler(t *testing.T) {
 		},
 		request: &TokenStatusRequest{
 			Token: testToken.String(),
-			Email: testUserEmail,
 		},
 		response: nil,
 		err:      ErrInvalidAppHeaders,
@@ -383,7 +382,6 @@ func TestRequestTokenAndStatusHandler(t *testing.T) {
 		endpoint: TokensPath,
 		request: &TokenStatusRequest{
 			Token: testToken.String(),
-			Email: testUserEmail,
 		},
 		response: nil,
 		err:      ErrInvalidAppHeaders,

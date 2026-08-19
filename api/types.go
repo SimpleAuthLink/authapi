@@ -44,7 +44,6 @@ func (tr *TokenRequest) IsEmail() bool {
 
 type TokenStatusRequest struct {
 	Token string `json:"token"`
-	Email string `json:"email"`
 }
 
 type TokenStatusResponse struct {

@@ -2,7 +2,6 @@ package client
 
 import (
 	"net/http"
-	"net/mail"
 	"net/url"
 	"time"
 
@@ -21,7 +20,6 @@ const (
 	DefaultAuthTokenHeader   = "X-Auth-Token"
 	DefaultAuthEmailHeader   = "X-Auth-User"
 	DefaultAuthTokenURLParam = "token"
-	DefaultAuthEmailURLParam = "user"
 )
 
 // Config holds the configuration for the client. It includes the API endpoint,
@@ -241,7 +239,7 @@ func (c *Client) RequestToken(email string) error {
 // valid email format. If the token is valid, it returns true and the
 // expiration time. If the token is invalid or the email address is not valid,
 // it returns false. If the request fails, it also returns an error.
-func (c *Client) VerifyToken(token *token.Token, email string) (bool, time.Time, error) {
+func (c *Client) VerifyToken(token *token.Token) (bool, time.Time, error) {
 	// validate the configuration before making the request, for this operation
 	// the app ID and secret are required
 	if err := c.config.Validate(true); err != nil {
@@ -251,14 +249,9 @@ func (c *Client) VerifyToken(token *token.Token, email string) (bool, time.Time,
 	if token == nil {
 		return false, time.Time{}, ErrInvalidToken
 	}
-	// check if the email is valid
-	if _, err := mail.ParseAddress(email); err != nil {
-		return false, time.Time{}, ErrInvalidEmailAddress
-	}
 	// create the request with the token and email data
 	data := &api.TokenStatusRequest{
 		Token: token.String(),
-		Email: email,
 	}
 	req, err := req(c.config, http.MethodPut, api.TokensPath, data)
 	if err != nil {
@@ -297,17 +290,16 @@ func (c *Client) AuthorizedRequestURLParams(r *http.Request) (string, bool, erro
 	}
 	// get the strToken and email from the request headers
 	strToken := params.Get(DefaultAuthTokenURLParam)
-	userEmail := params.Get(DefaultAuthEmailURLParam)
 	// check if the token and email are valid
-	if strToken == "" || userEmail == "" {
+	if strToken == "" {
 		return "", false, ErrMissingAuthURLParams
 	}
 	userToken := new(token.Token).SetString(strToken)
-	valid, _, err := c.VerifyToken(userToken, userEmail)
+	valid, _, err := c.VerifyToken(userToken)
 	if err != nil {
 		return "", false, err
 	}
-	return userEmail, valid, nil
+	return userToken.Email().String(), valid, nil
 }
 
 // AuthorizedRequestHeaders method checks if the request is authorized by
@@ -323,17 +315,16 @@ func (c *Client) AuthorizedRequestHeaders(r *http.Request) (string, bool, error)
 	}
 	// get the strToken and email from the request headers
 	strToken := r.Header.Get(DefaultAuthTokenHeader)
-	userEmail := r.Header.Get(DefaultAuthEmailHeader)
 	// check if the token and email are valid
-	if strToken == "" || userEmail == "" {
+	if strToken == "" {
 		return "", false, ErrMissingAuthHeaders
 	}
 	userToken := new(token.Token).SetString(strToken)
-	valid, _, err := c.VerifyToken(userToken, userEmail)
+	valid, _, err := c.VerifyToken(userToken)
 	if err != nil {
 		return "", false, err
 	}
-	return userEmail, valid, nil
+	return userToken.Email().String(), valid, nil
 }
 
 // req internal method creates a new HTTP request with the provided config,

@@ -76,7 +76,8 @@ func (s *Service) requestTokenHandler(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case req.Data.IsEmail():
 		// generate user genToken
-		genToken := appID.GenerateToken(*secret, token.UserID(req.Data.Email))
+		userEmail := new(token.Email).SetString(req.Data.Email)
+		genToken := appID.GenerateToken(*secret, *userEmail)
 		if genToken == nil {
 			ErrGenerateToken.With(req.Data.Email).Write(w)
 			return
@@ -136,7 +137,7 @@ func (s *Service) verifyTokenHandler(w http.ResponseWriter, r *http.Request) {
 	tkn := new(token.Token).SetString(req.Data.Token)
 	exp := tkn.Expiration().Time()
 	io.ResponseWith(&TokenStatusResponse{
-		Valid:      appID.VerifyToken(*tkn, *secret, token.UserID(req.Data.Email)),
+		Valid:      appID.VerifyToken(*tkn, *secret),
 		Expiration: exp,
 	}).WriteJSON(w)
 }
