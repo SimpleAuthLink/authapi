@@ -120,6 +120,7 @@ func TestSuccessFlow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to read token from email: %v", err)
 	}
+	log.Print(testToken.String())
 	// verify the token
 	valid, _, err := cli.VerifyToken(testToken)
 	if err != nil {

@@ -17,7 +17,18 @@ import (
 // generate tokens. It is created by encoding the app as a base64-encoded
 // byte slice resulting in concatenating the app name, redirect uri, and
 // session duration.
-func (s *Service) generateAppIDHandler(w http.ResponseWriter, r *http.Request) {
+//
+//	@Summary		Create an App
+//	@Description	Create an App with a provided secret and get the AppID to
+//	@Description	be used to generate tokens for your users.
+//	@Tags			apps
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		api.AppIDRequest	true	"App ID Request"
+//	@Success		200		{object}	api.AppIDResponse
+//	@Failure		400		{object}	io.APIError
+//	@Router			/apps [post]
+func (s *APIService) generateAppIDHandler(w http.ResponseWriter, r *http.Request) {
 	// decode the app data from the request body
 	req := new(io.Request[AppIDRequest])
 	if err := req.Read(r); err != nil {
@@ -38,7 +49,7 @@ func (s *Service) generateAppIDHandler(w http.ResponseWriter, r *http.Request) {
 	io.ResponseWith(&AppIDResponse{app.ID(app.Secret).String()}).WriteJSON(w)
 }
 
-func (s *Service) appAndSecretFromRequest(r *http.Request) (*token.App, *token.Secret, *io.APIError) {
+func (s *APIService) appAndSecretFromRequest(r *http.Request) (*token.App, *token.Secret, *io.APIError) {
 	// get the app id from the request header
 	strAppID, strAppSecret, err := appConfigFromRequest(r)
 	if err != nil {
@@ -59,7 +70,26 @@ func (s *Service) appAndSecretFromRequest(r *http.Request) (*token.App, *token.S
 	return app, secret, nil
 }
 
-func (s *Service) requestTokenHandler(w http.ResponseWriter, r *http.Request) {
+// requestTokenHandler handles the request to request a new token for a
+// given user email address. It takes the AppID and the AppSecret from the
+// request headers, and the user email from the request body, encoded into
+// a TokenRequest struct. It validates the input data, generates the user
+// token with the user email address and send to it the resulting token.
+//
+//	@Summary		Request a new token for the user
+//	@Description	Using the AppID and the AppSecret, request a new token for
+//	@Description	an user using its email address. The user will receive the
+//	@Description	session token via email to that address.
+//	@Tags			tokens
+//	@Accept			json
+//	@Security		AppID && AppSecret
+//	@Produce		json
+//	@Param			request	body	api.TokenRequest	true	"Token Request"
+//	@Success		200
+//	@Failure		400	{object}	io.APIError
+//	@Failure		500	{object}	io.APIError
+//	@Router			/tokens [post]
+func (s *APIService) requestTokenHandler(w http.ResponseWriter, r *http.Request) {
 	app, secret, err := s.appAndSecretFromRequest(r)
 	if err != nil {
 		err.Write(w)
@@ -120,7 +150,22 @@ func (s *Service) requestTokenHandler(w http.ResponseWriter, r *http.Request) {
 	io.OkResponse().WriteJSON(w)
 }
 
-func (s *Service) verifyTokenHandler(w http.ResponseWriter, r *http.Request) {
+// verifyTokenHandler handles the a token verification request. It takes the
+// AppID and the AppSecret from the request headers. It validates the token
+// for the given app configuration and check the token expiration.
+//
+//	@Summary		Verify a user token
+//	@Description	Check that the provided token is valid for the AppID and
+//	@Description	secret.
+//	@Tags			tokens
+//	@Accept			json
+//	@Produce		json
+//	@Security		AppID && AppSecret
+//	@Param			request	body		api.TokenStatusRequest	true	"Token Request"
+//	@Success		200		{object}	api.TokenStatusResponse
+//	@Failure		400		{object}	io.APIError
+//	@Router			/tokens [put]
+func (s *APIService) verifyTokenHandler(w http.ResponseWriter, r *http.Request) {
 	app, secret, err := s.appAndSecretFromRequest(r)
 	if err != nil {
 		err.Write(w)
@@ -142,6 +187,12 @@ func (s *Service) verifyTokenHandler(w http.ResponseWriter, r *http.Request) {
 	}).WriteJSON(w)
 }
 
-func (s *Service) healthCheckHandler(w http.ResponseWriter, r *http.Request) {
+// healthCheckHandler handles the ping request.
+//
+//	@Summary		Ping endpoint
+//	@Description	Use this endpoint to ensure that the service is up.
+//	@Success		200
+//	@Router			/ping [get]
+func (s *APIService) healthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	io.OkResponse().Write(w)
 }
