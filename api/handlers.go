@@ -78,12 +78,12 @@ func (s *APIService) appAndSecretFromRequest(r *http.Request) (*token.App, *toke
 //
 //	@Summary		Request a new token for the user
 //	@Description	Using the AppID and the AppSecret, request a new token for
-//	@Description	an user using its email address. The user will receive the
+//	@Description	a user using its email address. The user will receive the
 //	@Description	session token via email to that address.
 //	@Tags			tokens
 //	@Accept			json
-//	@Security		AppID && AppSecret
 //	@Produce		json
+//	@Security		AppID || AppSecret
 //	@Param			request	body	api.TokenRequest	true	"Token Request"
 //	@Success		200
 //	@Failure		400	{object}	io.APIError
@@ -160,7 +160,7 @@ func (s *APIService) requestTokenHandler(w http.ResponseWriter, r *http.Request)
 //	@Tags			tokens
 //	@Accept			json
 //	@Produce		json
-//	@Security		AppID && AppSecret
+//	@Security		AppID || AppSecret
 //	@Param			request	body		api.TokenStatusRequest	true	"Token Request"
 //	@Success		200		{object}	api.TokenStatusResponse
 //	@Failure		400		{object}	io.APIError

@@ -11,17 +11,18 @@
 //	@license.name				AGPL-3.0
 //	@license.url				https://github.com/SimpleAuthLink/authapi/blob/main/LICENSE
 //
-//	@host						api.simpleauth.link
-//	@BasePath					/
-//	@schemes					https
+//	@servers.url				https://api.simpleauth.link
+//	@servers.description		Production
 //
-//	@securityDefinitions.apikey	AppID
-//	@in							header
-//	@name						AppID
+//	@servers.url				https://demo.simpleauth.link
+//	@servers.description		Demo
 //
-//	@securityDefinitions.apikey	AppSecret
-//	@in							header
-//	@name						AppSecret
+//	@servers.url				{scheme}://{host}
+//	@servers.description		Custom
+//	@servers.variables.enum		scheme https
+//	@servers.variables.enum		scheme http
+//	@servers.variables.default	scheme https
+//	@servers.variables.default	host api.simpleauth.link
 //
 //	@tag.name					apps
 //	@tag.description			Create and manage your App
@@ -33,6 +34,14 @@
 //	@tag.docs.url				https://docs.simpleauth.link/about/tokens
 //	@tag.docs.description		About Tokens
 package api
+
+//	@securityDefinitions.apikey	AppID
+//	@in							header
+//	@name						AppID
+
+//	@securityDefinitions.apikey	AppSecret
+//	@in							header
+//	@name						AppSecret
 
 import (
 	"context"
