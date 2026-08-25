@@ -21,49 +21,68 @@ func TestValidApp(t *testing.T) {
 		RedirectURI:     testRedirectURI,
 		SessionDuration: testSessionDuration,
 	}
-	if err := app.Valid(nil); err != nil {
-		t.Errorf("expected valid app data")
-	}
-	// test app name
-	app.Name = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
-	if err := app.Valid(nil); err == nil {
-		t.Errorf("expected invalid app data")
-	}
-	app.Name = "no"
-	if err := app.Valid(nil); err == nil {
-		t.Errorf("expected invalid app data")
-	}
+
+	t.Run("no secret hash", func(t *testing.T) {
+		if err := app.Valid(nil); err != nil {
+			t.Fatalf("expected valid app data")
+		}
+	})
+
+	t.Run("too long app name", func(t *testing.T) {
+		app.Name = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
+		if err := app.Valid(nil); err == nil {
+			t.Fatalf("expected invalid app data")
+		}
+	})
+
+	t.Run("too short app name", func(t *testing.T) {
+		app.Name = "no"
+		if err := app.Valid(nil); err == nil {
+			t.Fatalf("expected invalid app data")
+		}
+	})
 	app.Name = testAppName
-	// test redirect URI
-	app.RedirectURI = "https://example.com/login?app=lorem_ipsum_dolor_sit_amet_consectetur_adipiscing_elit_sed_do_eiusmod_tempor_incididunt_ut_labore_et_dolore_magna_aliqua"
-	if err := app.Valid(nil); err == nil {
-		t.Errorf("expected invalid app data")
-	}
-	app.RedirectURI = "no_url"
-	if err := app.Valid(nil); err == nil {
-		t.Errorf("expected invalid app data")
-	}
+	t.Run("invalid redirect uri", func(t *testing.T) {
+		app.RedirectURI = "https://example.com/login?app=lorem_ipsum_dolor_sit_amet_consectetur_adipiscing_elit_sed_do_eiusmod_tempor_incididunt_ut_labore_et_dolore_magna_aliqua"
+		if err := app.Valid(nil); err == nil {
+			t.Fatalf("expected invalid app data")
+		}
+	})
+	t.Run("no redirect uri", func(t *testing.T) {
+		app.RedirectURI = "no_url"
+		if err := app.Valid(nil); err == nil {
+			t.Fatalf("expected invalid app data")
+		}
+	})
 	app.RedirectURI = testRedirectURI
-	// test session duration
-	app.SessionDuration = minDuration - 1
-	if err := app.Valid(nil); err == nil {
-		t.Errorf("expected invalid app data")
-	}
-	app.SessionDuration = maxDuration + 1
-	if err := app.Valid(nil); err == nil {
-		t.Errorf("expected invalid app data")
-	}
-	var nilApp *App
-	if err := nilApp.Valid(nil); err == nil {
-		t.Errorf("expected invalid app data")
-	}
-	app.AppSecretHash = testAppSecret.Hash()
-	servicePart := []byte("invalid-service-secret")
-	appPart := []byte("invalid-app-secret")
-	invalidSecret := new(Secret).SetParts(servicePart, appPart)
-	if err := app.Valid(invalidSecret.Hash()); err == nil {
-		t.Errorf("expected invalid app data")
-	}
+	t.Run("no min duration reached", func(t *testing.T) {
+		app.SessionDuration = minDuration - 1
+		if err := app.Valid(nil); err == nil {
+			t.Fatalf("expected invalid app data")
+		}
+	})
+	t.Run("max duration reached", func(t *testing.T) {
+		app.SessionDuration = maxDuration + 1
+		if err := app.Valid(nil); err == nil {
+			t.Fatalf("expected invalid app data")
+		}
+	})
+	app.SessionDuration = testSessionDuration
+	t.Run("nil app", func(t *testing.T) {
+		var nilApp *App
+		if err := nilApp.Valid(nil); err == nil {
+			t.Fatalf("expected invalid app data")
+		}
+	})
+	t.Run("invalid app secret", func(t *testing.T) {
+		app.AppSecretHash = testAppSecret.Hash()
+		servicePart := []byte("invalid-service-secret")
+		appPart := []byte("invalid-app-secret")
+		invalidSecret := new(Secret).SetParts(servicePart, appPart)
+		if err := app.Valid(invalidSecret.Hash()); err == nil {
+			t.Fatalf("expected invalid app data")
+		}
+	})
 }
 
 func TestAttributesSetAttributesApp(t *testing.T) {

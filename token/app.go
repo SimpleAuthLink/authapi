@@ -162,6 +162,9 @@ func (app *App) SetID(id *AppID) *App {
 	return app.Unmarshal(id.Bytes())
 }
 
+// SetSectret method sets the app secret. The app secret is a the secret part
+// that comes from the app creator and is used to sign tokens with the secret
+// part from the auth api instance.
 func (app *App) SetSecret(secret *Secret) *App {
 	if app == nil {
 		return nil

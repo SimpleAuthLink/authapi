@@ -1,10 +1,37 @@
 package token
 
-import "go.k7z7z.cc/x/encoding/base64url"
+import (
+	"bytes"
+	"net/mail"
+
+	"go.k7z7z.cc/x/encoding/base64url"
+)
 
 // Email type wraps a byte slice to handle an user email regarding the token
 // generation, managment and validation.
 type Email []byte
+
+// Valid method returns a boolean indicating if the current email is a valid
+// email address or not. It returns false if the email is nil, empty or invalid
+// address.
+func (e *Email) Valid() bool {
+	// If the current email is nil, return false
+	if e == nil {
+		return false
+	}
+	// Trim the given email
+	value := bytes.TrimSpace(e.Bytes())
+	if len(value) == 0 {
+		return false
+	}
+	// Ensure that the trimmed email is equal to the original one after parse
+	// it as an email address.
+	addr, err := mail.ParseAddress(string(value))
+	if err != nil {
+		return false
+	}
+	return addr.Address == string(value)
+}
 
 // SetBytes method writes a byte slice to the current Email type instance. If
 // a nil email is used, it is initialized.

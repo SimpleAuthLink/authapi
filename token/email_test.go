@@ -7,6 +7,33 @@ import (
 	"go.k7z7z.cc/x/encoding/base64url"
 )
 
+func TestEmailValid(t *testing.T) {
+	t.Run("valid email", func(t *testing.T) {
+		testEmail := []byte("user@example.com")
+		if !new(Email).SetBytes(testEmail).Valid() {
+			t.Fatal("expected to be valid")
+		}
+	})
+	t.Run("nil email", func(t *testing.T) {
+		var nilEmail *Email
+		if nilEmail.Valid() {
+			t.Fatal("expected to be invalid")
+		}
+	})
+	t.Run("empty email", func(t *testing.T) {
+		testEmail := []byte(" ")
+		if new(Email).SetBytes(testEmail).Valid() {
+			t.Fatal("expected to be invalid")
+		}
+	})
+	t.Run("wrong email", func(t *testing.T) {
+		testEmail := []byte("test@")
+		if new(Email).SetBytes(testEmail).Valid() {
+			t.Fatal("expected to be invalid")
+		}
+	})
+}
+
 func TestEmailBytes(t *testing.T) {
 	testEmail := []byte("user@example.com")
 	t.Run("existing email pointer", func(t *testing.T) {

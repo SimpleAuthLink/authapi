@@ -131,16 +131,19 @@ func TestPrivKeySignVerifyAppID(t *testing.T) {
 
 func TestGenerateTokenVerifyToken(t *testing.T) {
 	t.Parallel()
-	var nilAppID *AppID
-	if res := nilAppID.GenerateToken(nil, nil); res != nil {
-		t.Errorf("expected nil, got %v", res)
-	}
-	if nilAppID.VerifyToken(nil, *testAppSecret) {
-		t.Errorf("expected token to be invalid")
-	}
-	if res := new(AppID).GenerateToken(nil, nil); res != nil {
-		t.Errorf("expected nil, got %v", res)
-	}
+	t.Run("invalid app id", func(t *testing.T) {
+		var nilAppID *AppID
+		if res := nilAppID.GenerateToken(nil, nil); res != nil {
+			t.Errorf("expected nil, got %v", res)
+		}
+		if nilAppID.VerifyToken(nil, *testAppSecret) {
+			t.Errorf("expected token to be invalid")
+		}
+		if res := new(AppID).GenerateToken(nil, nil); res != nil {
+			t.Errorf("expected nil, got %v", res)
+		}
+	})
+
 	app := &App{
 		Name:            testAppName,
 		RedirectURI:     testRedirectURI,
@@ -154,40 +157,60 @@ func TestGenerateTokenVerifyToken(t *testing.T) {
 	if id == nil {
 		t.Fatalf("error decoding app ID")
 	}
-	if id.VerifyToken([]byte{}, *testAppSecret) {
-		t.Errorf("expected token to be invalid")
-	}
-	dummyToken := new(Token).SetExpiration(*new(Expiration).SetDuration(minDuration * 3))
-	if id.VerifyToken(*dummyToken, *testAppSecret) {
-		t.Errorf("expected token to be invalid")
-	}
-	dummyToken = new(Token).SetSignature([]byte("test"))
-	if id.VerifyToken(*dummyToken, *testAppSecret) {
-		t.Errorf("expected token to be invalid")
-	}
-	if invalidToken := id.GenerateToken(*testAppSecret, nil); invalidToken != nil {
-		t.Fatalf("expected nil, got %v", invalidToken)
-	}
+
+	t.Run("no vaid token", func(t *testing.T) {
+		if id.VerifyToken([]byte{}, *testAppSecret) {
+			t.Errorf("expected token to be invalid")
+		}
+	})
+
+	t.Run("invalid token generation", func(t *testing.T) {
+		dummyToken := new(Token).SetExpiration(*new(Expiration).SetDuration(minDuration * 3))
+		if id.VerifyToken(*dummyToken, *testAppSecret) {
+			t.Errorf("expected token to be invalid")
+		}
+		dummyToken = new(Token).SetSignature([]byte("test"))
+		if id.VerifyToken(*dummyToken, *testAppSecret) {
+			t.Errorf("expected token to be invalid")
+		}
+		if invalidToken := id.GenerateToken(*testAppSecret, nil); invalidToken != nil {
+			t.Fatalf("expected nil, got %v", invalidToken)
+		}
+	})
 
 	userID := new(Email).SetString("test@email.com")
-	token := id.GenerateToken(*testAppSecret, *userID)
-	if token == nil {
-		t.Fatalf("error creating token")
-	}
-	if !id.VerifyToken(token, *testAppSecret) {
-		t.Errorf("expected token to be valid")
-	}
-	time.Sleep(app.SessionDuration + time.Second)
-	if id.VerifyToken(token, *testAppSecret) {
-		t.Errorf("expected token to be invalid")
-	}
-	if id.VerifyToken(nil, *testAppSecret) {
-		t.Errorf("expected token to be invalid")
-	}
-	exp := new(Expiration).SetDuration(minDuration)
-	if id.VerifyToken(exp.Marshal(), *testAppSecret) {
-		t.Errorf("expected token to be invalid")
-	}
+	t.Run("valid token expiration", func(t *testing.T) {
+		token := id.GenerateToken(*testAppSecret, *userID)
+		if token == nil {
+			t.Fatalf("error creating token")
+		}
+		if !id.VerifyToken(token, *testAppSecret) {
+			t.Errorf("expected token to be valid")
+		}
+		time.Sleep(app.SessionDuration + time.Second)
+		if id.VerifyToken(token, *testAppSecret) {
+			t.Errorf("expected token to be invalid")
+		}
+	})
+
+	t.Run("invalid verify inputs", func(t *testing.T) {
+		if id.VerifyToken(nil, *testAppSecret) {
+			t.Errorf("expected token to be invalid")
+		}
+		exp := new(Expiration).SetDuration(minDuration)
+		if id.VerifyToken(exp.Marshal(), *testAppSecret) {
+			t.Errorf("expected token to be invalid")
+		}
+
+		token := id.GenerateToken(*testAppSecret, *userID)
+		if token == nil {
+			t.Fatalf("error creating token")
+		}
+		token.SetEmail(nil)
+		if id.VerifyToken(token, *testAppSecret) {
+			t.Fatalf("expected token to be invalid")
+		}
+	})
 }
 
 func TestTokenModificationRejected(t *testing.T) {
@@ -206,7 +229,7 @@ func TestTokenModificationRejected(t *testing.T) {
 	if id == nil {
 		t.Fatalf("error decoding app ID")
 	}
-	
+
 	userID := new(Email).SetString("test@email.com")
 	token := id.GenerateToken(*secret, *userID)
 	if token == nil {

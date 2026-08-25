@@ -88,7 +88,7 @@ func (id *AppID) PrivKey(secret Secret) ed25519.PrivateKey {
 // with the private key. The signature is then encoded to base64 before
 // being returned to be used as a part of the token, keeping it as short as
 // possible.
-func (id *AppID) Sign(secret Secret, msg []byte) []byte {
+func (id *AppID) Sign(secret Secret, msg []byte) Signature {
 	// check if the application ID is valid or the message is empty
 	if id == nil || len(msg) == 0 {
 		return nil
@@ -114,7 +114,7 @@ func (id *AppID) Sign(secret Secret, msg []byte) []byte {
 // verified by appending a nonce to it and hashing the result with the
 // public key. The signature is then decoded from base64 and verified with
 // the public key to ensure that it was signed by the private key.
-func (id *AppID) Verify(secret Secret, msg, sig []byte) bool {
+func (id *AppID) Verify(secret Secret, msg []byte, sig Signature) bool {
 	// check if the application ID is valid or the message and signature are
 	// not empty
 	if id == nil || len(msg) == 0 || len(sig) == 0 {
@@ -151,14 +151,11 @@ func (id *AppID) GenerateToken(secret Secret, email Email) Token {
 	}
 	// get the application for the application ID
 	app := new(App).SetID(id)
-	if app == nil {
+	if app == nil || app.Valid(nil) != nil {
 		return nil
 	}
 	// calculate the expiration time for the current app
 	exp := new(Expiration).SetDuration(app.SessionDuration)
-	if exp == nil {
-		return nil
-	}
 	// get the message to sign
 	msg := id.Message(email, *exp)
 	// sign the message with the secret
@@ -180,7 +177,7 @@ func (id *AppID) GenerateToken(secret Secret, email Email) Token {
 func (id *AppID) Message(email Email, exp Expiration) []byte {
 	// check if the application ID is valid, the email is not empty, and the
 	// expiration time is valid
-	if id == nil || len(email) == 0 || !exp.Valid() {
+	if id == nil || !email.Valid() || !exp.Valid() {
 		return nil
 	}
 	// hash the application ID with the email and expiration time
@@ -200,21 +197,18 @@ func (id *AppID) VerifyToken(token Token, secret Secret) bool {
 		return false
 	}
 	email := token.Email()
+	if !email.Valid() {
+		return false
+	}
 	// check if the expiration time is valid
 	exp := token.Expiration()
-	if exp == nil || !exp.Valid() {
+	if !exp.Valid() {
 		return false
 	}
 	// check if the token contains a signature
 	sig := token.Signature()
-	if len(sig) == 0 {
-		return false
-	}
 	// get the message to verify
 	msg := id.Message(*email, *exp)
-	if len(msg) == 0 {
-		return false
-	}
 	// verify the token with the secret
 	return id.Verify(secret, msg, sig)
 }

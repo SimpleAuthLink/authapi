@@ -33,23 +33,29 @@ func TestSetPartsSecret(t *testing.T) {
 }
 
 func TestValidSecret(t *testing.T) {
-	var nilSecret *Secret
-	if valid := nilSecret.Valid(); valid {
-		t.Errorf("expected false, got %v", valid)
-	}
-	if valid := new(Secret).Valid(); valid {
-		t.Errorf("expected false, got %v", valid)
-	}
-	servicePart := []byte("service-secret")
-	singlePart := new(Secret).SetParts(servicePart)
-	if valid := singlePart.Valid(); valid {
-		t.Errorf("expected false, got %v", valid)
-	}
+	t.Run("nil secret", func(t *testing.T) {
+		var nilSecret *Secret
+		if valid := nilSecret.Valid(); valid {
+			t.Errorf("expected false, got %v", valid)
+		}
+		if valid := new(Secret).Valid(); valid {
+			t.Errorf("expected false, got %v", valid)
+		}
+	})
+	serverPart := []byte("server-secret")
 	appPart := []byte("app-secret")
-	valid := new(Secret).SetParts(servicePart, appPart)
-	if !valid.Valid() {
-		t.Errorf("expected true, got false")
-	}
+	t.Run("invalid number of parts", func(t *testing.T) {
+		singlePart := new(Secret).SetParts(serverPart)
+		if valid := singlePart.Valid(); valid {
+			t.Error("expected false, got true")
+		}
+	})
+	t.Run("multiple parts", func(t *testing.T) {
+		valid := new(Secret).SetParts(serverPart, appPart)
+		if !valid.Valid() {
+			t.Errorf("expected true, got false")
+		}
+	})
 }
 
 func TestSecretHash(t *testing.T) {
