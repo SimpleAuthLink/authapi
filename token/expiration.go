@@ -11,10 +11,19 @@ import (
 // expiration time.
 type Expiration time.Time
 
+// Empty method returns if the current expiration is empty or not. An Empty
+// instance is considered empty when it is nil or zero time.Time.
+func (exp *Expiration) Empty() bool {
+	if exp == nil {
+		return true
+	}
+	return exp.Time().IsZero()
+}
+
 // Valid method returns true if the expiration is valid, false otherwise. An
 // expiration is considered valid if it is in the future.
 func (exp *Expiration) Valid() bool {
-	return time.Now().Before(exp.Time())
+	return !exp.Empty() && time.Now().Before(exp.Time())
 }
 
 // Time method returns the expiration time as a time.Time.

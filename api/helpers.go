@@ -3,6 +3,9 @@ package api
 import (
 	"fmt"
 	"net/http"
+
+	"github.com/simpleauthlink/authapi/token"
+	"go.k7z7z.cc/x/net/http/io"
 )
 
 // appConfigFromRequest extracts the app id and app secret from the request
@@ -22,4 +25,25 @@ func appConfigFromRequest(r *http.Request) (string, string, error) {
 		return "", "", fmt.Errorf("missing app secret")
 	}
 	return strAppID, strAppSecret, nil
+}
+
+func appAndSecretFromRequest(r *http.Request, serviceSecret []byte) (*token.App, *token.Secret, *io.APIError) {
+	// get the app id from the request header
+	strAppID, strAppSecret, err := appConfigFromRequest(r)
+	if err != nil {
+		return nil, nil, ErrInvalidAppHeaders
+	}
+	// decode the app id get the app from it
+	appID := new(token.AppID).SetString(strAppID)
+	app := new(token.App).SetID(appID)
+	// compose the app secret with both parts
+	secret := new(token.Secret).SetParts(serviceSecret, []byte(strAppSecret))
+	if !secret.Valid() {
+		return nil, nil, ErrInvalidAppSecret
+	}
+	// check if the app id is valid (it should be a valid app)
+	if err := app.Valid(secret.Hash()); err != nil {
+		return nil, nil, ErrInvalidAppID
+	}
+	return app, secret, nil
 }

@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/http"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -166,6 +168,13 @@ func TestServiceStop(t *testing.T) {
 			log.Fatal(err)
 		}
 	}()
+	// wait for the server to be up before pinging
+	for range 10 {
+		if tempSrv.Ping() {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
 	// verify server is up
 	if !tempSrv.Ping() {
 		t.Error("server should be reachable after start")
@@ -177,5 +186,48 @@ func TestServiceStop(t *testing.T) {
 	// verify server is down
 	if tempSrv.Ping() {
 		t.Error("server should not be reachable after stop")
+	}
+}
+
+func TestPingInvalidConfig(t *testing.T) {
+	srv := &APIService{cfg: &Config{Server: "invalid host"}}
+	if srv.Ping() {
+		t.Error("expected Ping to return false for an invalid server address")
+	}
+}
+
+type errorOnCloseListener struct {
+	net.Listener
+	started   chan struct{}
+	startOnce sync.Once
+}
+
+func (l *errorOnCloseListener) Accept() (net.Conn, error) {
+	l.startOnce.Do(func() { close(l.started) })
+	return l.Listener.Accept()
+}
+
+func (l *errorOnCloseListener) Close() error {
+	_ = l.Listener.Close()
+	return fmt.Errorf("forced close error")
+}
+
+func TestStopCloseError(t *testing.T) {
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	errL := &errorOnCloseListener{Listener: l, started: make(chan struct{})}
+	ctx, cancel := context.WithCancel(context.Background())
+	srv := &APIService{
+		ctx:    ctx,
+		cancel: cancel,
+		cfg:    &Config{Server: testServerAddr},
+		Server: &http.Server{},
+	}
+	go func() { _ = srv.Server.Serve(errL) }()
+	<-errL.started
+	if err := srv.Stop(); err == nil {
+		t.Error("expected Stop to return the listener close error")
 	}
 }

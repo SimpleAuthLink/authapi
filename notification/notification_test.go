@@ -7,14 +7,17 @@ import (
 	"time"
 )
 
-type testConfig struct{}
-
-func (testConfig) Valid() bool {
-	return true
+type testConfig struct {
+	invalid     bool
+	unsupported bool
 }
 
-func (testConfig) Support(n Notification) bool {
-	return true
+func (t testConfig) Valid() bool {
+	return !t.invalid
+}
+
+func (t testConfig) Support(n Notification) bool {
+	return !t.unsupported
 }
 
 type testNotification struct{}
@@ -185,6 +188,26 @@ func TestSendInvalidConfig(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Error("expected error on Errors() channel")
 	}
+}
+
+func TestInvalidConfig(t *testing.T) {
+	if _, err := NewQueue(context.Background(), 10, testConfig{invalid: true}); err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+}
+
+func TestNoSupportedConf(t *testing.T) {
+	queue, err := NewQueue(context.Background(), 10, testConfig{unsupported: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	queue.Start(1)
+
+	if err := queue.Push(testNotification{}); err != nil {
+		t.Fatalf("push: %v", err)
+	}
+	// Worker processes notification via send's happy-path (Send returns nil).
+	queue.Stop()
 }
 
 func TestSendSuccess(t *testing.T) {

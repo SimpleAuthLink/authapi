@@ -54,7 +54,8 @@ func TestFindToken(t *testing.T) {
 	appID := app.ID(secret)
 
 	testEmail := "user@test.com"
-	testToken := appID.GenerateToken(*secret, token.UserID(testEmail))
+	userID := new(token.Email).SetString(testEmail)
+	testToken := appID.GenerateToken(*secret, *userID)
 	if testToken == nil {
 		t.Fatal("failed to generate test token")
 	}

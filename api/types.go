@@ -1,17 +1,16 @@
 package api
 
 import (
-	"net/mail"
 	"time"
 
 	"github.com/simpleauthlink/authapi/token"
 )
 
 type AppIDRequest struct {
-	Name        string `json:"name"`
-	Duration    string `json:"session_duration"`
-	RedirectURL string `json:"redirect_url"`
-	Secret      string `json:"secret"`
+	Name        string `json:"name" example:"MySuperMegaApp"`
+	Duration    string `json:"session_duration" example:"30m"`
+	RedirectURL string `json:"redirect_url" example:"https://example.com/callback"`
+	Secret      string `json:"secret" example:"mysupersecret"`
 }
 
 func (data *AppIDRequest) parseApp(secret string) (*token.App, error) {
@@ -34,17 +33,11 @@ type AppIDResponse struct {
 }
 
 type TokenRequest struct {
-	Email string `json:"email"`
-}
-
-func (tr *TokenRequest) IsEmail() bool {
-	_, err := mail.ParseAddress(tr.Email)
-	return err == nil
+	Email string `json:"email" example:"user@example.com"`
 }
 
 type TokenStatusRequest struct {
-	Token string `json:"token"`
-	Email string `json:"email"`
+	Token string `json:"token" example:"<token>"`
 }
 
 type TokenStatusResponse struct {

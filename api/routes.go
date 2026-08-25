@@ -16,8 +16,16 @@ const (
 const (
 	// AppIDHeader constant is the header of the app ID in the request. It is
 	// used to authenticate the app making the request.
-	AppIDHeader = "AppID"
+	AppIDHeader = "X-SIMPLEAUTHLINK-APPID"
 	// AppSecretHeader constant is the header of the app secret in the request
 	// It is used to authenticate the app making the request.
-	AppSecretHeader = "AppSecret"
+	AppSecretHeader = "X-SIMPLEAUTHLINK-SECRET"
+	// AuthTokenHeader constant is the header used by API client to expose a
+	// helper to get the user token from the request headers and validate it
+	// before continue.
+	AuthTokenHeader = "X-SIMPLEAUTHLINK-TOKEN"
+	// AuthTokenURLParam constant is the header used by API client to expose a
+	// helper to get the user token from the URL and validate it before
+	// continue.
+	AuthTokenURLParam = "token"
 )
