@@ -1,0 +1,243 @@
+components:
+  schemas:
+    api.AppIDRequest:
+      properties:
+        name:
+          example: MySuperMegaApp
+          type: string
+        redirect_url:
+          example: https://example.com/callback
+          type: string
+        secret:
+          example: mysupersecret
+          type: string
+        session_duration:
+          example: 30m
+          type: string
+      type: object
+    api.AppIDResponse:
+      properties:
+        id:
+          type: string
+      type: object
+    api.TokenRequest:
+      properties:
+        email:
+          example: user@example.com
+          type: string
+      type: object
+    api.TokenStatusRequest:
+      properties:
+        token:
+          example: <token>
+          type: string
+      type: object
+    api.TokenStatusResponse:
+      properties:
+        expiration:
+          type: string
+        valid:
+          type: boolean
+      type: object
+    io.APIError:
+      properties:
+        code:
+          type: integer
+        error:
+          type: string
+        message:
+          type: string
+      type: object
+  securitySchemes:
+    X-SIMPLEAUTHLINK-APPID:
+      description: Use the received App ID after registering the App (POST /apps).
+      in: header
+      name: X-SIMPLEAUTHLINK-APPID
+      type: apiKey
+    X-SIMPLEAUTHLINK-SECRET:
+      description: 'Use the same secret you provided when creating the App ID. Default:
+        mysupersecret'
+      in: header
+      name: X-SIMPLEAUTHLINK-SECRET
+      type: apiKey
+externalDocs:
+  description: ""
+  url: ""
+info:
+  contact:
+    email: info@simpleauth.link
+    name: API Support
+    url: https://simpleauth.link
+  description: Passwordless authentication API for your users using just an email
+    address.
+  license:
+    name: AGPL-3.0
+    url: https://github.com/SimpleAuthLink/authapi/blob/main/LICENSE
+  title: SimpleAuth.link API
+  version: "1.0"
+openapi: 3.1.0
+paths:
+  /apps:
+    post:
+      description: |-
+        Create an App with a provided secret and get the AppID to
+        be used to generate tokens for your users.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/api.AppIDRequest'
+              description: App ID Request
+              summary: request
+        description: App ID Request
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/api.AppIDResponse'
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/io.APIError'
+          description: Bad Request
+      summary: Create an App
+      tags:
+      - apps
+  /demo/inbox:
+    get:
+      description: |-
+        Retrieves the latest token for an email sent to a demo
+        inbox. The stream closes once the token is delivered.
+        Only available in Demo environments.
+      parameters:
+      - description: Email address to get the token for
+        in: query
+        name: email
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            text/event-stream:
+              schema:
+                type: string
+          description: Server-Sent Events stream; the token arrives in the data field
+        "400":
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/io.APIError'
+          description: Bad Request
+      summary: Demo email inbox
+      tags:
+      - default
+  /ping:
+    get:
+      description: Use this endpoint to ensure that the service is up.
+      responses:
+        "200":
+          description: OK
+      summary: Ping endpoint
+  /tokens:
+    post:
+      description: |-
+        Using the AppID and the AppSecret, request a new token for
+        a user using its email address. The user will receive the
+        session token via email to that address.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/api.TokenRequest'
+              description: Token Request
+              summary: request
+        description: Token Request
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/io.APIError'
+          description: Bad Request
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/io.APIError'
+          description: Internal Server Error
+      security:
+      - X-SIMPLEAUTHLINK-APPID: []
+        X-SIMPLEAUTHLINK-SECRET: []
+      summary: Request a new token for the user
+      tags:
+      - tokens
+    put:
+      description: |-
+        Check that the provided token is valid for the AppID and
+        secret.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/api.TokenStatusRequest'
+              description: Token Request
+              summary: request
+        description: Token Request
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/api.TokenStatusResponse'
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/io.APIError'
+          description: Bad Request
+      security:
+      - X-SIMPLEAUTHLINK-APPID: []
+        X-SIMPLEAUTHLINK-SECRET: []
+      summary: Verify a user token
+      tags:
+      - tokens
+servers:
+- description: Demo
+  url: https://demo.simpleauth.link
+- description: Production
+  url: https://api.simpleauth.link
+- description: Custom
+  url: '{scheme}://{host}'
+  variables:
+    host:
+      default: localhost:8080
+    scheme:
+      default: http
+      enum:
+      - https
+      - http
+tags:
+- description: Create and manage your App
+  externalDocs:
+    description: About Apps
+    url: https://docs.simpleauth.link/about/apps
+  name: apps
+- description: Request and verify tokens
+  externalDocs:
+    description: About Tokens
+    url: https://docs.simpleauth.link/about/tokens
+  name: tokens
