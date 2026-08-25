@@ -30,7 +30,7 @@ clean-api:
 
 swagger-ui:
 	./scripts/generate-swagger.sh
-	@trap 'truncate -s 0 docs/swagger.yaml' EXIT; \
+	@trap 'git checkout HEAD -- docs/swagger.yaml' EXIT; \
 	docker run --rm \
 		-p 8081:8080 \
 		-e SWAGGER_JSON=/spec/swagger.yaml \
