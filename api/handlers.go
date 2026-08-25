@@ -22,7 +22,6 @@ import (
 //	@Description	Create an App with a provided secret and get the AppID to
 //	@Description	be used to generate tokens for your users.
 //	@Tags			apps
-//	@Accept			json
 //	@Produce		json
 //	@Param			request	body		api.AppIDRequest	true	"App ID Request"
 //	@Success		200		{object}	api.AppIDResponse
@@ -49,27 +48,6 @@ func (s *APIService) generateAppIDHandler(w http.ResponseWriter, r *http.Request
 	io.ResponseWith(&AppIDResponse{app.ID(app.Secret).String()}).WriteJSON(w)
 }
 
-func (s *APIService) appAndSecretFromRequest(r *http.Request) (*token.App, *token.Secret, *io.APIError) {
-	// get the app id from the request header
-	strAppID, strAppSecret, err := appConfigFromRequest(r)
-	if err != nil {
-		return nil, nil, ErrInvalidAppHeaders
-	}
-	// decode the app id get the app from it
-	appID := new(token.AppID).SetString(strAppID)
-	app := new(token.App).SetID(appID)
-	// compose the app secret with both parts
-	secret := new(token.Secret).SetParts([]byte(s.cfg.Secret), []byte(strAppSecret))
-	if !secret.Valid() {
-		return nil, nil, ErrInvalidAppSecret
-	}
-	// check if the app id is valid (it should be a valid app)
-	if err := app.Valid(secret.Hash()); err != nil {
-		return nil, nil, ErrInvalidAppID
-	}
-	return app, secret, nil
-}
-
 // requestTokenHandler handles the request to request a new token for a
 // given user email address. It takes the AppID and the AppSecret from the
 // request headers, and the user email from the request body, encoded into
@@ -81,20 +59,21 @@ func (s *APIService) appAndSecretFromRequest(r *http.Request) (*token.App, *toke
 //	@Description	a user using its email address. The user will receive the
 //	@Description	session token via email to that address.
 //	@Tags			tokens
-//	@Accept			json
 //	@Produce		json
-//	@Security		AppID || AppSecret
+//	@Security		X-SIMPLEAUTHLINK-APPID || X-SIMPLEAUTHLINK-SECRET
 //	@Param			request	body	api.TokenRequest	true	"Token Request"
 //	@Success		200
 //	@Failure		400	{object}	io.APIError
 //	@Failure		500	{object}	io.APIError
 //	@Router			/tokens [post]
 func (s *APIService) requestTokenHandler(w http.ResponseWriter, r *http.Request) {
-	app, secret, err := s.appAndSecretFromRequest(r)
+	app, secret, err := appAndSecretFromRequest(r, []byte(s.cfg.Secret))
 	if err != nil {
 		err.Write(w)
 		return
 	}
+	// AppID can not be nil because the appAndSecretFromRequest checks it, so
+	// not nil-check is required here
 	appID := app.ID(secret)
 	// decode the token request from the request body
 	req := new(io.Request[TokenRequest])
@@ -103,21 +82,17 @@ func (s *APIService) requestTokenHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	userEmail := new(token.Email).SetString(req.Data.Email)
 	switch {
-	case req.Data.IsEmail():
-		// generate user genToken
-		userEmail := new(token.Email).SetString(req.Data.Email)
+	case userEmail.Valid():
+		// generate user genToken for the appID, with the secret and the given
+		// user email. Nil-check is not required since at this point all
+		// required information is valid and provided.
 		genToken := appID.GenerateToken(*secret, *userEmail)
-		if genToken == nil {
-			ErrGenerateToken.With(req.Data.Email).Write(w)
-			return
-		}
 
-		linkURL, err := url.Parse(app.RedirectURI)
-		if err != nil {
-			ErrGenerateNotification.WithErr(err).Write(w)
-			return
-		}
+		// Parse error is not reachable at this point since the app comes
+		// from a validated appID which requires a valid redirect URI
+		linkURL, _ := url.Parse(app.RedirectURI)
 		q := linkURL.Query()
 		q.Set("token", genToken.String())
 		q.Set("user", req.Data.Email)
@@ -158,15 +133,14 @@ func (s *APIService) requestTokenHandler(w http.ResponseWriter, r *http.Request)
 //	@Description	Check that the provided token is valid for the AppID and
 //	@Description	secret.
 //	@Tags			tokens
-//	@Accept			json
 //	@Produce		json
-//	@Security		AppID || AppSecret
+//	@Security		X-SIMPLEAUTHLINK-APPID || X-SIMPLEAUTHLINK-SECRET
 //	@Param			request	body		api.TokenStatusRequest	true	"Token Request"
 //	@Success		200		{object}	api.TokenStatusResponse
 //	@Failure		400		{object}	io.APIError
 //	@Router			/tokens [put]
 func (s *APIService) verifyTokenHandler(w http.ResponseWriter, r *http.Request) {
-	app, secret, err := s.appAndSecretFromRequest(r)
+	app, secret, err := appAndSecretFromRequest(r, []byte(s.cfg.Secret))
 	if err != nil {
 		err.Write(w)
 		return

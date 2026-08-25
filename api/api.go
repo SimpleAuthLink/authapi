@@ -11,18 +11,18 @@
 //	@license.name				AGPL-3.0
 //	@license.url				https://github.com/SimpleAuthLink/authapi/blob/main/LICENSE
 //
-//	@servers.url				https://api.simpleauth.link
-//	@servers.description		Production
-//
 //	@servers.url				https://demo.simpleauth.link
 //	@servers.description		Demo
+//
+//	@servers.url				https://api.simpleauth.link
+//	@servers.description		Production
 //
 //	@servers.url				{scheme}://{host}
 //	@servers.description		Custom
 //	@servers.variables.enum		scheme https
 //	@servers.variables.enum		scheme http
-//	@servers.variables.default	scheme https
-//	@servers.variables.default	host api.simpleauth.link
+//	@servers.variables.default	scheme http
+//	@servers.variables.default	host localhost:8080
 //
 //	@tag.name					apps
 //	@tag.description			Create and manage your App
@@ -35,13 +35,15 @@
 //	@tag.docs.description		About Tokens
 package api
 
-//	@securityDefinitions.apikey	AppID
+//	@securityDefinitions.apikey	X-SIMPLEAUTHLINK-APPID
 //	@in							header
-//	@name						AppID
+//	@name						X-SIMPLEAUTHLINK-APPID
+//	@description				Use the received App ID after registering the App (POST /apps).
 
-//	@securityDefinitions.apikey	AppSecret
+//	@securityDefinitions.apikey	X-SIMPLEAUTHLINK-SECRET
 //	@in							header
-//	@name						AppSecret
+//	@name						X-SIMPLEAUTHLINK-SECRET
+//	@description				Use the same secret you provided when creating the App ID. Default: mysupersecret
 
 import (
 	"context"

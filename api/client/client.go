@@ -16,10 +16,7 @@ const (
 	DefaultClientTimeout = 30 * time.Second
 	// DefaultAPIEndpoint is the default API endpoint for the client. It can be
 	// overridden in the Config struct.
-	DefaultAPIEndpoint       = "https://api.simpleauth.link"
-	DefaultAuthTokenHeader   = "X-Auth-Token"
-	DefaultAuthEmailHeader   = "X-Auth-User"
-	DefaultAuthTokenURLParam = "token"
+	DefaultAPIEndpoint = "https://api.simpleauth.link"
 )
 
 // Config holds the configuration for the client. It includes the API endpoint,
@@ -202,15 +199,15 @@ func (c *Client) SetupAppID(appID *token.AppID, appSecret string) {
 // RequestToken method requests a new token for the given email address. It
 // requires the client configuration to be valid, including the application
 // ID and secret. The email address must be a valid email format.
-func (c *Client) RequestToken(email string) error {
+func (c *Client) RequestToken(email *token.Email) error {
 	// validate the configuration before making the request, for this operation
 	// the app ID and secret are required
 	if err := c.config.Validate(true); err != nil {
 		return err
 	}
-	data := &api.TokenRequest{Email: email}
+	data := &api.TokenRequest{Email: email.String()}
 	// check if the email is valid
-	if !data.IsEmail() {
+	if !email.Valid() {
 		return ErrInvalidRequestTokenInputs
 	}
 	// create the request with the email data
@@ -233,12 +230,11 @@ func (c *Client) RequestToken(email string) error {
 	return nil
 }
 
-// VerifyToken method verifies the provided token for the given email address.
-// It requires the client configuration to be valid, including the application
-// ID and secret. The token must be valid, and the email address must be a
-// valid email format. If the token is valid, it returns true and the
-// expiration time. If the token is invalid or the email address is not valid,
-// it returns false. If the request fails, it also returns an error.
+// VerifyToken method verifies the provided token. It requires the client
+// configuration to be valid, including the application ID and secret. If
+// the token is a valid Token, it returns true and the expiration time. If
+// the token is invalid or it has expired, it returns false. It also returns
+// an error if the request fails.
 func (c *Client) VerifyToken(token *token.Token) (bool, time.Time, error) {
 	// validate the configuration before making the request, for this operation
 	// the app ID and secret are required
@@ -289,7 +285,7 @@ func (c *Client) AuthorizedRequestURLParams(r *http.Request) (string, bool, erro
 		return "", false, ErrMissingAuthURLParams
 	}
 	// get the strToken and email from the request headers
-	strToken := params.Get(DefaultAuthTokenURLParam)
+	strToken := params.Get(api.AuthTokenURLParam)
 	// check if the token and email are valid
 	if strToken == "" {
 		return "", false, ErrMissingAuthURLParams
@@ -314,7 +310,7 @@ func (c *Client) AuthorizedRequestHeaders(r *http.Request) (string, bool, error)
 		return "", false, err
 	}
 	// get the strToken and email from the request headers
-	strToken := r.Header.Get(DefaultAuthTokenHeader)
+	strToken := r.Header.Get(api.AuthTokenHeader)
 	// check if the token and email are valid
 	if strToken == "" {
 		return "", false, ErrMissingAuthHeaders

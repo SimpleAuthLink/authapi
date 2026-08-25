@@ -410,6 +410,20 @@ func TestRequestTokenHandlerErrorBranches(t *testing.T) {
 	app.SetSecret(secret)
 	appID := app.ID(secret)
 
+	t.Run("invalid secret provided", func(t *testing.T) {
+		testCaseAPIHandler[TokenRequest, any]{
+			name:     "whitespace-only secret",
+			method:   http.MethodPost,
+			endpoint: TokensPath,
+			header: http.Header{
+				AppIDHeader:     []string{appID.String()},
+				AppSecretHeader: []string{"\u00a0"},
+			},
+			request: &TokenRequest{Email: testUserEmail},
+			err:     ErrInvalidAppSecret,
+		}.Run(t)
+	})
+
 	t.Run("invalid notification channel", func(t *testing.T) {
 		testCaseAPIHandler[TokenRequest, any]{
 			name:     "non-email hits default",
