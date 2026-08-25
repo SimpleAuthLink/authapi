@@ -10,6 +10,7 @@ on:
         paths:
             - "api/**/*"
             - "scripts/generate-swagger.sh"
+            - "scripts/generate-swagger-ui.sh"
 
 jobs:
     api-swagger:
@@ -95,6 +96,9 @@ jobs:
               with:
                   name: swagger.yaml
                   path: docs
+
+            - name: Generate Swagger UI assets
+              run: ./scripts/generate-swagger-ui.sh
 
             - uses: actions/configure-pages@v6
 
