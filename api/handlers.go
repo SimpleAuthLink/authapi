@@ -19,8 +19,11 @@ import (
 // session duration.
 //
 //	@Summary		Create an App
-//	@Description	Create an App with a provided secret and get the AppID to
-//	@Description	be used to generate tokens for your users.
+//	@Description	Register a new application by submitting its configuration
+//	@Description	details, including the app name, session duration, redirect
+//	@Description	URL, and secret. This process generates a unique AppID that
+//	@Description	is used to identify your application and secure subsequent
+//	@Description	API requests.
 //	@Tags			apps
 //	@Produce		json
 //	@Param			request	body		api.AppIDRequest	true	"App ID Request"
@@ -55,9 +58,12 @@ func (s *APIService) generateAppIDHandler(w http.ResponseWriter, r *http.Request
 // token with the user email address and send to it the resulting token.
 //
 //	@Summary		Request a new token for the user
-//	@Description	Using the AppID and the AppSecret, request a new token for
-//	@Description	a user using its email address. The user will receive the
-//	@Description	session token via email to that address.
+//	@Description	Request an authentication token for a user by providing
+//	@Description	their email address. The service generates a secure token
+//	@Description	using cryptographic methods and sends it via email in a
+//	@Description	magic link, enabling passwordless login. This endpoint
+//	@Description	requires X-SIMPLEAUTHLINK-APPID and X-SIMPLEAUTHLINK-SECRET
+//	@Description	auth headers to be defined.
 //	@Tags			tokens
 //	@Produce		json
 //	@Security		X-SIMPLEAUTHLINK-APPID || X-SIMPLEAUTHLINK-SECRET
@@ -130,8 +136,11 @@ func (s *APIService) requestTokenHandler(w http.ResponseWriter, r *http.Request)
 // for the given app configuration and check the token expiration.
 //
 //	@Summary		Verify a user token
-//	@Description	Check that the provided token is valid for the AppID and
-//	@Description	secret.
+//	@Description	Validate a received token to ensure it is authentic,
+//	@Description	unexpired, and properly associated with your application
+//	@Description	and the user. This step is critical for maintaining secure
+//	@Description	sessions. This endpoint requires X-SIMPLEAUTHLINK-APPID and
+//	@Description	X-SIMPLEAUTHLINK-SECRET auth headers to be defined.
 //	@Tags			tokens
 //	@Produce		json
 //	@Security		X-SIMPLEAUTHLINK-APPID || X-SIMPLEAUTHLINK-SECRET
@@ -164,7 +173,8 @@ func (s *APIService) verifyTokenHandler(w http.ResponseWriter, r *http.Request) 
 // healthCheckHandler handles the ping request.
 //
 //	@Summary		Ping endpoint
-//	@Description	Use this endpoint to ensure that the service is up.
+//	@Description	This endpoint allows to a third party to check if the
+//	@Description	service is alive and running.
 //	@Success		200
 //	@Router			/ping [get]
 func (s *APIService) healthCheckHandler(w http.ResponseWriter, r *http.Request) {

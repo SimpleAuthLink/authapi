@@ -1,18 +1,38 @@
-# build
-FROM golang:1.26-alpine as builder
+# syntax=docker/dockerfile:1
 
-WORKDIR /app/data
+FROM golang:1.26-bookworm AS build
+
+WORKDIR /src
+
+COPY go.mod go.sum ./
+RUN go mod download
+
 COPY . .
 
-RUN go mod tidy
-RUN go build -o /authapi ./cmd/demo/main.go
+ARG TARGETOS
+ARG TARGETARCH
 
-# deploy
-FROM alpine:latest
+RUN CGO_ENABLED=0 \
+    GOOS=${TARGETOS:-linux} \
+    GOARCH=${TARGETARCH:-amd64} \
+    go build \
+    -trimpath \
+    -ldflags="-s -w" \
+    -o /out/api \
+    ./cmd/demo
 
-EXPOSE 80
+FROM gcr.io/distroless/static-debian13:nonroot
 
-WORKDIR /
-COPY --from=builder /authapi /authapi
+WORKDIR /app
 
-ENTRYPOINT /authapi
+COPY --from=build --chown=nonroot:nonroot /out/api /app/api
+
+# distroless images do not ship a CA certificate bundle; it is required to
+# verify the SMTP server certificate over TLS.
+COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+
+EXPOSE 8080
+
+USER nonroot:nonroot
+
+ENTRYPOINT ["/app/api"]

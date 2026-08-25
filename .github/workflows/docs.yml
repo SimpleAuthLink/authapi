@@ -1,11 +1,11 @@
-name: API Swagger Docs
+name: API Docs
 
 on:
     push:
         branches:
             - main
         paths-ignore:
-            - "docs/swagger.yaml"
+            - "docs/api/swagger.yaml"
     pull_request:
         paths:
             - "api/**/*"
@@ -35,13 +35,13 @@ jobs:
               uses: actions/upload-artifact@v7
               with:
                   name: swagger.yaml
-                  path: docs/swagger.yaml
+                  path: docs/api/swagger.yaml
 
             - name: Check if there is a difference
               uses: mathiasvr/command-output@v2.0.0
               id: diff
               with:
-                  run: git diff --no-color docs/swagger.yaml
+                  run: git diff --no-color docs/api/swagger.yaml
 
             - name: Mark previous comment as outdated if no diff
               if: ${{ github.event_name == 'pull_request' && steps.diff.outputs.stdout == '' }}
@@ -67,12 +67,12 @@ jobs:
               run: |
                   git config user.name "github-actions"
                   git config user.email "github-actions@users.noreply.github.com"
-                  git add docs/swagger.yaml
+                  git add docs/api/swagger.yaml
                   git commit -m "ci: regenerate swagger.yaml after merge"
                   git push
 
     deploy-pages:
-        name: Deploy Swagger UI to GitHub Pages
+        name: Deploy docs site and Swagger UI to GitHub Pages
         needs: api-swagger
         if: github.event_name == 'push'
         runs-on: ubuntu-latest
@@ -91,21 +91,30 @@ jobs:
         steps:
             - uses: actions/checkout@v7
 
-            - name: Overwrite docs/swagger.yaml with the freshly generated spec
-              uses: actions/download-artifact@v4
+            - name: Overwrite docs/api/swagger.yaml with the freshly generated spec
+              uses: actions/download-artifact@v7
               with:
                   name: swagger.yaml
-                  path: docs
+                  path: docs/api
 
             - name: Generate Swagger UI assets
               run: ./scripts/generate-swagger-ui.sh
 
+            - name: Setup Ruby
+              uses: ruby/setup-ruby@v1
+              with:
+                  ruby-version: "3.3"
+                  bundler-cache: true
+
+            - name: Build docs site with Jekyll
+              run: bundle exec jekyll build --source docs --destination _site
+
             - uses: actions/configure-pages@v6
 
-            - name: Upload docs/ (Swagger UI + spec)
+            - name: Upload built site
               uses: actions/upload-pages-artifact@v3
               with:
-                  path: docs
+                  path: _site
 
             - name: Deploy to GitHub Pages
               id: deployment
