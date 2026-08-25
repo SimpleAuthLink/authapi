@@ -84,6 +84,18 @@ func main() {
 	log.Info("HTTP server stopped, exiting...")
 }
 
+// demoInboxHandler retrieves the latest token for a demo email.
+//
+//	@Summary		Demo email inbox
+//	@Description	Retrieves the latest token for an email sent to a demo
+//	@Description	inbox. The stream closes once the token is delivered.
+//	@Description	Only available in Demo environments.
+//	@Tags			default
+//	@Produce		text/event-stream
+//	@Param			email	query		string	true	"Email address to get the token for"
+//	@Success		200		{string}	string	"Server-Sent Events stream; the token arrives in the data field"
+//	@Failure		400		{object}	io.APIError
+//	@Router			/demo/inbox [get]
 func demoInboxHandler(w http.ResponseWriter, r *http.Request) {
 	// get the email from get parameters
 	email := r.URL.Query().Get("email")
@@ -113,6 +125,9 @@ func demoInboxHandler(w http.ResponseWriter, r *http.Request) {
 				if err := rc.Flush(); err != nil {
 					return
 				}
+				// close the stream once the token is delivered so that the
+				// response completes and clients (like swagger-ui) can show it
+				return
 			}
 		}
 	}
