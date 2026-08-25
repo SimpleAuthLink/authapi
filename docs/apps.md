@@ -1,11 +1,10 @@
 ---
 title: 📝 Apps
 layout: default
-parent: ℹ️ About
-permalink: /about/apps
+permalink: /apps
 ---
 
-# About Apps 📝
+# Apps 📝
 
 An **application** is a collection of user tokens managed by an administrator. Each app encapsulates essential information used to identify, authenticate, and manage user sessions. The app details include:
 
@@ -44,7 +43,7 @@ Both parts are hashed with SHA-256 and concatenated to compose the **full secret
 
 ## Create Your App via the API 🛠️
 
-Register a new application by sending its configuration to the [`POST /apps`](https://simpleauthlink.github.io/authapi/#/apps/post) endpoint:
+Register a new application by sending its configuration to the [`POST /apps`]({{ '/api/#/apps/post_apps' | absolute_url }}) endpoint:
 
 ```http
 POST /apps

@@ -3,3 +3,12 @@
 !.env.example
 !example.env
 vegeta.conf
+
+# Generated Swagger UI assets (produced by scripts/generate-swagger-ui.sh)
+docs/api/index.html
+docs/api/swagger-ui.css
+docs/api/swagger-ui-bundle.js
+docs/api/LICENSE.swagger-ui
+
+# Jekyll build output
+_site/

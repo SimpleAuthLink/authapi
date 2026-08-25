@@ -13,7 +13,7 @@
 This repository contains the source code of the SimpleAuth.link API Service.
 
 - Read the full [documentation here](https://docs.simpleauth.link).
-- Try the API in the interactive [Swagger UI](https://simpleauthlink.github.io/authapi/).
+- Try the API in the interactive [Swagger UI](https://simpleauthlink.github.io/authapi/api/).
 
 ---
 

@@ -34,7 +34,7 @@ When the user clicks the magic link:
 
 - **Stateless Architecture:** SimpleAuth.link operates without a traditional database. It does not store any user data, including email addresses, on its servers. Both App IDs and tokens are self-contained and can be verified with nothing more than the app configuration and secret. This stateless design enhances security and reduces the risk of data breaches.
 - **Token Generation Process:** By leveraging the Ed25519 signature algorithm, the service deterministically generates a private key using your App ID and secret. This ensures that each token is cryptographically secure and uniquely tied to your application, eliminating the need to store sensitive keys.
-- **Token Structure:** A token is composed of three parts — the expiration time, the signature and the user's email — base64url-encoded and separated by dots. See [About Tokens](/about/tokens) for details.
+- **Token Structure:** A token is composed of three parts — the expiration time, the signature and the user's email — base64url-encoded and separated by dots. See [About Tokens]({{ '/about/tokens' | relative_url }}) for details.
 
 ## Benefits of Using SimpleAuth.link 🎯
 
@@ -44,7 +44,7 @@ When the user clicks the magic link:
 
 ## API Reference
 
-The full API is described in the interactive [Swagger UI](https://simpleauthlink.github.io/authapi/), with details about [Apps](/about/apps) and [Tokens](/about/tokens) in the rest of the documentation.
+The full API is described in the interactive [Swagger UI]({{ '/api/' | absolute_url }}), with details about [Apps]({{ '/about/apps' | relative_url }}) and [Tokens]({{ '/about/tokens' | relative_url }}) in the rest of the documentation.
 
 ## Magic Links 🔗
 

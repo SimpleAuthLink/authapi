@@ -1,0 +1,26 @@
+# Jekyll configuration for the SimpleAuth.link documentation site.
+#
+# By default the docs are deployed to GitHub Pages at
+# https://simpleauthlink.github.io/authapi/ (project site).
+#
+# To publish the same docs on a custom domain instead, change these two keys:
+#   url: "https://your-domain.com"
+#   baseurl: ""
+#
+# The links inside the docs pages are built with Jekyll's relative_url /
+# absolute_url filters, so they follow the url/baseurl automatically.
+
+title: SimpleAuth.link
+description: >-
+  Passwordless authentication for your users using just an email address.
+url: "https://simpleauthlink.github.io"
+baseurl: "/authapi"
+
+theme: just-the-docs
+
+plugins:
+  - jekyll-include-cache
+  - jekyll-seo-tag
+
+search_enabled: true
+heading_anchors: true

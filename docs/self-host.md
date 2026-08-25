@@ -1,8 +1,7 @@
 ---
 title: 🚀 Self-host
 layout: default
-parent: ℹ️ About
-permalink: /about/self-host
+permalink: /self-host
 ---
 
 # Self-Hosting Your Project 🚀

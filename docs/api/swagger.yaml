@@ -80,8 +80,11 @@ paths:
   /apps:
     post:
       description: |-
-        Create an App with a provided secret and get the AppID to
-        be used to generate tokens for your users.
+        Register a new application by submitting its configuration
+        details, including the app name, session duration, redirect
+        URL, and secret. This process generates a unique AppID that
+        is used to identify your application and secure subsequent
+        API requests.
       requestBody:
         content:
           application/json:
@@ -138,7 +141,9 @@ paths:
       - default
   /ping:
     get:
-      description: Use this endpoint to ensure that the service is up.
+      description: |-
+        This endpoint allows to a third party to check if the
+        service is alive and running.
       responses:
         "200":
           description: OK
@@ -146,9 +151,12 @@ paths:
   /tokens:
     post:
       description: |-
-        Using the AppID and the AppSecret, request a new token for
-        a user using its email address. The user will receive the
-        session token via email to that address.
+        Request an authentication token for a user by providing
+        their email address. The service generates a secure token
+        using cryptographic methods and sends it via email in a
+        magic link, enabling passwordless login. This endpoint
+        requires X-SIMPLEAUTHLINK-APPID and X-SIMPLEAUTHLINK-SECRET
+        auth headers to be defined.
       requestBody:
         content:
           application/json:
@@ -185,8 +193,11 @@ paths:
       - tokens
     put:
       description: |-
-        Check that the provided token is valid for the AppID and
-        secret.
+        Validate a received token to ensure it is authentic,
+        unexpired, and properly associated with your application
+        and the user. This step is critical for maintaining secure
+        sessions. This endpoint requires X-SIMPLEAUTHLINK-APPID and
+        X-SIMPLEAUTHLINK-SECRET auth headers to be defined.
       requestBody:
         content:
           application/json:

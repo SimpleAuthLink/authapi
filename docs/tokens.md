@@ -1,11 +1,10 @@
 ---
 title: 🔐 Tokens
 layout: default
-parent: ℹ️ About
-permalink: /about/tokens
+permalink: /tokens
 ---
 
-# About Tokens 🔒
+# Tokens 🔒
 
 A **token** represents a valid session for an authenticated user associated with your application. Each token is designed with the following characteristics:
 
@@ -42,7 +41,7 @@ The full secret used to sign tokens is calculated by hashing two parts with `sha
 
 ## Request a Token via the API 🔏
 
-Request a token for a user by sending their email to the [`POST /tokens`](https://simpleauthlink.github.io/authapi/#/tokens/post) endpoint, authenticating with your App ID and secret headers:
+Request a token for a user by sending their email to the [`POST /tokens`]({{ '/api/#/tokens/post_tokens' | absolute_url }}) endpoint, authenticating with your App ID and secret headers:
 
 ```http
 POST /tokens
@@ -59,7 +58,7 @@ A magic link is sent to that email address. The link is the app's `redirect_url`
 
 ## Verify a Token via the API ✅
 
-Verify a token (for example, when the user returns through the magic link) by sending it to the [`PUT /tokens`](https://simpleauthlink.github.io/authapi/#/tokens/put) endpoint:
+Verify a token (for example, when the user returns through the magic link) by sending it to the [`PUT /tokens`]({{ '/api/#/tokens/put_tokens' | absolute_url }}) endpoint:
 
 ```http
 PUT /tokens
