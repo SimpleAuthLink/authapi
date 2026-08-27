@@ -1,10 +1,14 @@
 ---
-title: 🚀 Self-host
+title: Self-host
 layout: default
-permalink: /self-host
+nav_icon: server
+nav_level: 2
+nav_parent: Dev
+nav_order: 7
+permalink: /dev/self-host
 ---
 
-# Self-Hosting Your Project 🚀
+# Self-Hosting Your Project
 
 This section explains how to deploy and run your project in a self-hosted environment. You have three main options:
 
@@ -14,11 +18,11 @@ This section explains how to deploy and run your project in a self-hosted enviro
 
 ---
 
-## Option 1: Docker Deployment 🐳
+## Option 1: Docker Deployment
 
 The Docker deployment is based on the production Dockerfile located at `docker/Dockerfile.prod`. It produces a minimal, [distroless](https://github.com/GoogleContainerTools/distroless) image that runs the API as a non-root user.
 
-### 1. **Prepare the Environment File 📄**
+### 1. Prepare the Environment File
 
 Copy the `example.env` file to `.env` and edit the file to fill in your parameters:
 
@@ -35,7 +39,7 @@ NOTIFICATION_QUEUE_SIZE=1000
 NOTIFICATION_QUEUE_WORKERS=10
 ```
 
-### 2. Build the Docker Image 🏗️
+### 2. Build the Docker Image
 
 Run the following command in the root of your project to build the image:
 
@@ -43,7 +47,7 @@ Run the following command in the root of your project to build the image:
 docker build -f docker/Dockerfile.prod -t simpleauthlink .
 ```
 
-### 3. Run the Docker Container 🚢
+### 3. Run the Docker Container
 
 Once the image is built, start a container using the environment file:
 
@@ -55,20 +59,20 @@ The API listens on the `PORT` value defined in your `.env` (default `8080`), bot
 
 ---
 
-## Option 2: Using the Makefile ⚙️
+## Option 2: Using the Makefile
 
 The Makefile in the root of the project simplifies the build and run process:
 
-- `make api` — builds and runs the API container using `docker/Dockerfile.prod`.
-- `make demo` — builds and runs the demo container using `docker/Dockerfile.demo`.
-- `make swagger-ui` — generates the swagger spec and serves it locally with Swagger UI.
-- `make clean-api` / `make clean-demo` — clean up the corresponding containers and images.
+- `make api`: builds and runs the API container using `docker/Dockerfile.prod`.
+- `make demo`: builds and runs the demo container using `docker/Dockerfile.demo`.
+- `make swagger-ui`: generates the swagger spec and serves it locally with Swagger UI.
+- `make clean-api` / `make clean-demo`: clean up the corresponding containers and images.
 
-### 1. Set Up the Environment File 📋
+### 1. Set Up the Environment File
 
 As with the Docker approach, copy and edit `example.env` to `.env` with your configuration.
 
-### 2. Build and Run Using Make 🏃‍♂️
+### 2. Build and Run Using Make
 
 Run the following command from your project root:
 
@@ -82,7 +86,7 @@ This will:
 - Build the Docker image using `docker/Dockerfile.prod`.
 - Run the container with the environment variables from `.env` and expose the API on the configured `PORT`.
 
-## Option 3: Running the Go Code Directly 👨‍💻
+## Option 3: Running the Go Code Directly
 
 If you prefer to run the API without Docker, you can execute the Go code directly. The entry point is `cmd/authapi/main.go` and it accepts several flags, which can also be provided via environment variables:
 

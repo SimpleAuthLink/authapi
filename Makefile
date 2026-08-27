@@ -1,4 +1,4 @@
-.PHONY: demo api swagger-ui docs clean-demo clean-api
+.PHONY: demo api swagger-ui clean-demo clean-api
 
 demo: clean-demo
 	@echo "Building demo image..."
@@ -36,13 +36,3 @@ swagger-ui:
 		-e SWAGGER_JSON=/spec/swagger.yaml \
 		-v "$$PWD/docs/api:/spec:ro" \
 		docker.swagger.io/swaggerapi/swagger-ui
-
-docs:
-	docker run --rm -it \
-		-p 4000:4000 \
-		-p 35729:35729 \
-		-v "$$PWD:/app" \
-		-v "jekyll-gems:/usr/local/bundle" \
-		-w /app \
-		ruby:3.3 \
-		bash -lc 'gem install bundler -v 2.5.23 --no-document && bundle install && bundle exec jekyll serve --source docs --livereload --host 0.0.0.0'
