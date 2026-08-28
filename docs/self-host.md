@@ -12,11 +12,20 @@ permalink: /dev/self-host
 
 This section explains how to deploy and run your project in a self-hosted environment. You have three main options:
 
-1. **Using Docker directly with the provided Dockerfile 🐳**
-2. **Using the Makefile for an automated build and run process ⚙️**
-3. **Executing the Go code directly with command-line flags 👨‍💻**
+1. **Using Docker directly with the provided Dockerfile**
+2. **Using the Makefile for an automated build and run process**
+3. **Executing the Go code directly with command-line flags**
 
----
+## Get the Source Code
+
+Clone the repository and navigate into it:
+
+```bash
+git clone https://github.com/simpleauthlink/authapi.git
+cd authapi
+```
+
+Then choose one of the deployment options below.
 
 ## Option 1: Docker Deployment
 
@@ -56,8 +65,6 @@ docker run --name simpleauthlink --env-file .env -p ${PORT}:${PORT} simpleauthli
 ```
 
 The API listens on the `PORT` value defined in your `.env` (default `8080`), both inside the container and on your host.
-
----
 
 ## Option 2: Using the Makefile
 

@@ -116,6 +116,7 @@ jobs:
           favicon: assets/favicon.ico
           logo: assets/logo-dark.svg
           logo-dark: assets/logo-light.svg
+          theme: light
 
       - name: Upload built site
         uses: actions/upload-pages-artifact@v5

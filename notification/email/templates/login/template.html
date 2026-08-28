@@ -1,77 +1,199 @@
+<!doctype html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <meta http-equiv="Content-Type" content="text/html charset=UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Your Magic Link for {{.AppName}} Login</title>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <meta name="supported-color-schemes" content="light">
+    <title>Sign in to {{.AppName}}</title>
     <style>
-        @media screen and (max-width: 600px) {
-            .content {width: 100%;display: block;}
-            .header,.body,.footer {padding: 20px;}
+        body,
+        table,
+        td,
+        a {
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+        }
+
+        table,
+        td {
+            mso-table-lspace: 0;
+            mso-table-rspace: 0;
+        }
+
+        table {
+            border-collapse: collapse !important;
+        }
+
+        img {
+            -ms-interpolation-mode: bicubic;
+            border: 0;
+            outline: none;
+            text-decoration: none;
+        }
+
+        a {
+            color: inherit;
+        }
+
+        @media only screen and (max-width: 620px) {
+            .email-shell {
+                width: 100% !important;
+            }
+
+            .email-gutter {
+                padding: 16px !important;
+            }
+
+            .email-header {
+                padding: 24px !important;
+            }
+
+            .email-body {
+                padding: 32px 24px !important;
+            }
+
+            .email-footer {
+                padding: 24px !important;
+            }
+
+            .headline {
+                font-size: 30px !important;
+                line-height: 34px !important;
+            }
+
+            .button-cell,
+            .button-link {
+                display: block !important;
+                width: 100% !important;
+                box-sizing: border-box !important;
+            }
         }
     </style>
 </head>
 
-<body style="font-family: 'Poppins', Arial, sans-serif; text-align: center;">
-    <table width="100%" border="0" cellspacing="0" cellpadding="0">
+<body
+    style="margin: 0; padding: 0; width: 100%; background-color: #f6f6f7; color: #17181a; font-family: Arial, Helvetica, sans-serif;">
+    <div style="display: none; max-height: 0; overflow: hidden; opacity: 0; color: transparent; mso-hide: all;">
+        Use this secure, time-limited link to sign in to {{.AppName}}.
+    </div>
+
+    <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0"
+        style="width: 100%; background-color: #f6f6f7;">
         <tr>
-            <td align="center" style="padding: 20px;">
-                <table class="content" width="600" border="0" cellspacing="0" cellpadding="0"
-                    style="border-collapse: collapse; border: 1px solid #cccccc;">
+            <td class="email-gutter" align="center" style="padding: 40px 20px;">
+                <table class="email-shell" role="presentation" width="600" border="0" cellspacing="0" cellpadding="0"
+                    style="width: 600px; max-width: 600px; background-color: #ffffff; border: 1px solid #dedfe2; border-radius: 8px; overflow: hidden;">
                     <tr>
-                        <td class="header" style="padding: 40px; text-align: center; color: #1d2734; font-size: 24px;">
-                            <img src="https://simpleauth.link/assets/logo.jpg" alt="Logo" width="48" height="48" style="display: inline-block;" />
-                            <h2 style="display: inline-block">Simple<span style="color: #1c76fd;">Auth</span>.link</h2>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td class="body" style="padding: 40px; text-align: center; font-size: 16px; line-height: 1.6;">
-                            <h2>👋 Hi, {{.Email}}!</h2>
-                            <br /><br />
-                            Your <b>magic link</b> is ready! 🎉
-                            <br /><br />
-                            You can access to your <b>{{.AppName}}</b> account using it 🔐.
-                            <br />
-                            Click the button below to login to your account. 👇
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 0px 40px 0px 40px; text-align: center;">
-                            <table cellspacing="0" cellpadding="0" style="margin: auto;">
-                                <tr style="padding: 0 30px 0 30px;">
-                                    <td align="center"
-                                        style="background-color: #1c76fd; padding: 10px 20px; border-radius: 5px;">
-                                        <a href="{{.Link}}" target="_blank" style="color: #ffffff; text-decoration: none; font-weight: bold;">Login to
-                                            {{.AppName}}</a>
-                                    </td>
-                                </tr>
+                        <td class="email-header" style="padding: 26px 36px; border-bottom: 1px solid #dedfe2;">
+                            <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0">
                                 <tr>
-                                    <td style="padding: 0 30px 0 30px;">
-                                        <br />
-                                        <small>It contains your login token: </small>
-                                        <br />
-                                        <small><pre style="white-space: pre-wrap;">{{.Token}}</pre></small>
-                                        <br />
-                                        <small>Which is only valid for you and for a short period of time. </small>
-                                        <br />
-                                        <small>If you didn't request this, you can ignore this email.</small>
+                                    <td
+                                        style="color: #17181a; font-size: 18px; font-weight: 700; letter-spacing: -0.3px;">
+                                        SimpleAuth<span style="color: #666a70; font-weight: 500;">.link</span>
+                                    </td>
+                                    <td align="right"
+                                        style="color: #666a70; font-family: 'Courier New', Courier, monospace; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">
+                                        Login request
                                     </td>
                                 </tr>
                             </table>
                         </td>
                     </tr>
+
                     <tr>
-                        <td class="body" style="padding: 40px; text-align: left; font-size: 16px; line-height: 1.6;">
-                            or copy and paste the following link in your browser:
-                            <br /><br />
-                            <pre>{{.Link}}</pre>
-                            <br /><br />
-                            If you did not request this, please ignore this email.
+                        <td class="email-body" style="padding: 46px 48px 42px;">
+                            <div
+                                style="margin-bottom: 18px; color: #666a70; font-family: 'Courier New', Courier, monospace; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">
+                                Passwordless authentication
+                            </div>
+                            <h1 class="headline"
+                                style="margin: 0 0 18px; color: #17181a; font-size: 38px; line-height: 42px; font-weight: 700; letter-spacing: -1.5px;">
+                                Sign in to {{.AppName}}
+                            </h1>
+                            <p style="margin: 0 0 30px; color: #666a70; font-size: 16px; line-height: 26px;">
+                                A sign-in link was requested for <strong
+                                    style="color: #17181a; font-weight: 600;">{{.Email}}</strong>. Use the button below
+                                to confirm your identity and return to {{.AppName}}.
+                            </p>
+
+                            <table role="presentation" border="0" cellspacing="0" cellpadding="0"
+                                style="margin: 0 0 34px;">
+                                <tr>
+                                    <td class="button-cell" align="center" bgcolor="#17181a"
+                                        style="border-radius: 6px; background-color: #17181a;">
+                                        <a class="button-link" href="{{.Link}}" target="_blank"
+                                            style="display: inline-block; padding: 13px 22px; color: #ffffff; font-size: 14px; line-height: 18px; font-weight: 700; text-decoration: none;">
+                                            Sign in to {{.AppName}} &nbsp;&rarr;
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0"
+                                style="width: 100%; margin-bottom: 30px; border: 1px solid #dedfe2; border-radius: 6px; background-color: #f6f6f7;">
+                                <tr>
+                                    <td
+                                        style="padding: 16px 18px; border-bottom: 1px solid #dedfe2; color: #666a70; font-family: 'Courier New', Courier, monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;">
+                                        Authentication receipt
+                                    </td>
+                                    <td align="right"
+                                        style="padding: 16px 18px; border-bottom: 1px solid #dedfe2; color: #17181a; font-family: 'Courier New', Courier, monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase;">
+                                        &#9679;&nbsp; Signed
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td colspan="2" style="padding: 17px 18px;">
+                                        <table role="presentation" width="100%" border="0" cellspacing="0"
+                                            cellpadding="0">
+                                            <tr>
+                                                <td style="padding-bottom: 9px; color: #666a70; font-size: 12px;">
+                                                    Application</td>
+                                                <td align="right"
+                                                    style="padding-bottom: 9px; color: #17181a; font-size: 12px; font-weight: 700;">
+                                                    {{.AppName}}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="color: #666a70; font-size: 12px;">Access</td>
+                                                <td align="right"
+                                                    style="color: #17181a; font-size: 12px; font-weight: 700;">Signed
+                                                    &amp; time-limited</td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <p
+                                style="margin: 0 0 10px; color: #666a70; font-family: 'Courier New', Courier, monospace; font-size: 10px; font-weight: 700; line-height: 16px; letter-spacing: 0.8px; text-transform: uppercase;">
+                                Raw login token
+                            </p>
+                            <p
+                                style="margin: 0 0 26px; padding: 12px 14px; border: 1px solid #dedfe2; border-radius: 5px; background-color: #f6f6f7; color: #46494e; font-family: 'Courier New', Courier, monospace; font-size: 11px; line-height: 17px; overflow-wrap: anywhere; word-break: break-all;">
+                                {{.Token}}
+                            </p>
+
+                            <p style="margin: 0 0 10px; color: #666a70; font-size: 13px; line-height: 20px;">
+                                If the button does not work, copy and paste this link into your browser:
+                            </p>
+                            <p
+                                style="margin: 0; padding: 12px 14px; border: 1px solid #dedfe2; border-radius: 5px; background-color: #f6f6f7; color: #46494e; font-family: 'Courier New', Courier, monospace; font-size: 11px; line-height: 17px; word-break: break-all;">
+                                <a href="{{.Link}}" target="_blank"
+                                    style="color: #46494e; text-decoration: none;">{{.Link}}</a>
+                            </p>
                         </td>
                     </tr>
+
                     <tr>
-                        <td class="footer" style="background-color: #333333; padding: 40px; text-align: center; color: white; font-size: 14px;">
-                            {{.AppName}} || Made by <a href="https://simpleauth.link/" target="_blank"style="color: white">SimpleAuth.link</a>
+                        <td class="email-footer"
+                            style="padding: 26px 36px; border-top: 1px solid #dedfe2; background-color: #fafafa; color: #666a70; font-size: 12px; line-height: 19px;">
+                            If you did not request access to {{.AppName}}, you can safely ignore this email. The link is
+                            cryptographically signed and valid only for a limited time.
+                            <br><br>
+                            Sent by <a href="https://simpleauth.link/" target="_blank"
+                                style="color: #17181a; font-weight: 700; text-decoration: none;">SimpleAuth.link</a>
                         </td>
                     </tr>
                 </table>
