@@ -1,6 +1,7 @@
 package client
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 	"time"
@@ -319,6 +320,13 @@ func (c *Client) AuthorizedRequestHeaders(r *http.Request) (string, bool, error)
 	valid, _, err := c.VerifyToken(userToken)
 	if err != nil {
 		return "", false, err
+	}
+	if !valid {
+		return "", false, nil
+	}
+	email := userToken.Email()
+	if email == nil {
+		return "", true, fmt.Errorf("invalid email")
 	}
 	return userToken.Email().String(), valid, nil
 }
